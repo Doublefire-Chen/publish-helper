@@ -37,7 +37,7 @@ def get_pt_gen_description(pt_gen_api_url, resource_url):
         # 根据响应结构获取format字段
         format_data = data.get('format') if 'format' in data else data.get('data', {}).get('format', '')
 
-        # 返回处理后的format字段
+        # 返回处理后的format字段和完整的数据
         if format_data != '' and format_data is not None:
             format_data = format_data.replace('&#39;', '\'')
             personalized_signature = get_settings("personalized_signature")
@@ -46,7 +46,8 @@ def get_pt_gen_description(pt_gen_api_url, resource_url):
                 format_data = personalized_signature + '\n' + format_data
             format_data += '\n'
             format_data = format_data.replace('img1', 'img2')
-            return True, format_data
+            # Return both format and full data for poster URL extraction
+            return True, (format_data, data)
         else:
             return False, '获取到的PT-Gen简介为空，可能是资源链接有误或PT-Gen接口出错，请检查后重试'
 

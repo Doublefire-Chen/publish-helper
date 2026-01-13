@@ -282,12 +282,75 @@ class mainwindow(QMainWindow, Ui_Mainwindow):
             if description:
                 print(description)
                 self.get_pt_gen_success = True
+                
+                # Process poster if auto download and upload is enabled
+                description = self._process_poster_in_description(description)
+                
                 self.descriptionBrowserMovie.setText(description)
                 self.debugBrowserMovie.append('成功获取PT-Gen信息')
             else:
                 self.debugBrowserMovie.append('获取PT-Gen信息失败，返回的结果为空')
         else:
             self.debugBrowserMovie.append(f'未成功获取到任何PT-Gen信息{response}')
+
+    def _process_poster_in_description(self, description):
+        """Process poster URLs in description if auto download/upload is enabled."""
+        try:
+            auto_download_upload_poster = bool(get_settings('auto_download_upload_poster'))
+            if not auto_download_upload_poster:
+                return description
+            
+            # Extract poster URL from [img]...[/img] tag
+            import re
+            img_pattern = r'\[img\](https?://[^\]]+)\[/img\]'
+            match = re.search(img_pattern, description)
+            
+            if not match:
+                print('No [img] tag found in description')
+                return description
+            
+            original_poster_url = match.group(1)
+            print(f'Found poster URL in description: {original_poster_url}')
+            self.debugBrowserMovie.append(f'检测到海报链接：{original_poster_url}')
+            
+            # Import poster processing function
+            from src.core.poster import process_poster
+            
+            picture_bed_api_url = get_settings('picture_bed_api_url')
+            picture_bed_api_token = get_settings('picture_bed_api_token')
+            screenshot_storage_path = get_settings('screenshot_storage_path')
+            
+            self.debugBrowserMovie.append('开始下载并上传海报...')
+            
+            # Process the poster
+            success, result = process_poster(
+                original_poster_url,
+                picture_bed_api_url,
+                picture_bed_api_token,
+                screenshot_storage_path
+            )
+            
+            if success:
+                uploaded_url = result
+                print(f'Poster uploaded successfully: {uploaded_url}')
+                self.debugBrowserMovie.append(f'海报上传成功：{uploaded_url}')
+                
+                # Replace the original URL with uploaded URL
+                description = description.replace(
+                    f'[img]{original_poster_url}[/img]',
+                    f'[img]{uploaded_url}[/img]'
+                )
+                self.debugBrowserMovie.append('已替换简介中的海报链接')
+            else:
+                print(f'Poster upload failed: {result}')
+                self.debugBrowserMovie.append(f'海报上传失败：{result}')
+                
+        except Exception as e:
+            print(f'Error processing poster: {e}')
+            self.debugBrowserMovie.append(f'处理海报时出错：{e}')
+        
+        return description
+
 
     def get_picture_button_movie_clicked(self):
         self.pictureUrlBrowserMovie.setText('')
@@ -902,12 +965,75 @@ class mainwindow(QMainWindow, Ui_Mainwindow):
             if response:
                 print(response)
                 self.get_pt_gen_success = True
+                
+                # Process poster if auto download and upload is enabled (TV tab)
+                response = self._process_poster_in_description_tv(response)
+                
                 self.descriptionBrowserTV.setText(response)
                 self.debugBrowserTV.append('成功获取PT-Gen信息')
             else:
                 self.debugBrowserTV.append('获取PT-Gen信息失败')
         else:
             self.debugBrowserTV.append(f'未成功获取到任何PT-Gen信息{response}')
+
+    def _process_poster_in_description_tv(self, description):
+        """Process poster URLs in description for TV tab."""
+        try:
+            auto_download_upload_poster = bool(get_settings('auto_download_upload_poster'))
+            if not auto_download_upload_poster:
+                return description
+            
+            # Extract poster URL from [img]...[/img] tag
+            import re
+            img_pattern = r'\[img\](https?://[^\]]+)\[/img\]'
+            match = re.search(img_pattern, description)
+            
+            if not match:
+                print('No [img] tag found in description')
+                return description
+            
+            original_poster_url = match.group(1)
+            print(f'Found poster URL in description: {original_poster_url}')
+            self.debugBrowserTV.append(f'检测到海报链接：{original_poster_url}')
+            
+            # Import poster processing function
+            from src.core.poster import process_poster
+            
+            picture_bed_api_url = get_settings('picture_bed_api_url')
+            picture_bed_api_token = get_settings('picture_bed_api_token')
+            screenshot_storage_path = get_settings('screenshot_storage_path')
+            
+            self.debugBrowserTV.append('开始下载并上传海报...')
+            
+            # Process the poster
+            success, result = process_poster(
+                original_poster_url,
+                picture_bed_api_url,
+                picture_bed_api_token,
+                screenshot_storage_path
+            )
+            
+            if success:
+                uploaded_url = result
+                print(f'Poster uploaded successfully: {uploaded_url}')
+                self.debugBrowserTV.append(f'海报上传成功：{uploaded_url}')
+                
+                # Replace the original URL with uploaded URL
+                description = description.replace(
+                    f'[img]{original_poster_url}[/img]',
+                    f'[img]{uploaded_url}[/img]'
+                )
+                self.debugBrowserTV.append('已替换简介中的海报链接')
+            else:
+                print(f'Poster upload failed: {result}')
+                self.debugBrowserTV.append(f'海报上传失败：{result}')
+                
+        except Exception as e:
+            print(f'Error processing poster: {e}')
+            self.debugBrowserTV.append(f'处理海报时出错：{e}')
+        
+        return description
+
 
     def get_picture_button_tv_clicked(self):
         self.pictureUrlBrowserTV.setText('')
@@ -2047,6 +2173,7 @@ class settings(QDialog, Ui_Settings):
         self.autoUploadScreenshot.setChecked(bool(get_settings('auto_upload_screenshot')))
         self.pasteScreenshotUrl.setChecked(bool(get_settings('paste_screenshot_url')))
         self.deleteScreenshot.setChecked(bool(get_settings('delete_screenshot')))
+        self.autoDownloadUploadPoster.setChecked(bool(get_settings('auto_download_upload_poster')))
         self.mediaInfoSuffix.setChecked(bool(get_settings('media_info_suffix')))
         self.makeDir.setChecked(bool(get_settings('make_dir')))
         self.renameFile.setChecked(bool(get_settings('rename_file')))
@@ -2075,16 +2202,18 @@ class settings(QDialog, Ui_Settings):
         update_settings('picture_bed_api_url', self.pictureBedApiUrl.text())
         update_settings('picture_bed_api_token', self.pictureBedApiToken.text())
         update_settings('screenshot_number', str(self.screenshotNumber.text()))
-        update_settings('screenshot_threshold', str(self.screenshotThreshold.text()))
-        update_settings('screenshot_start_percentage', str(self.screenshotStartPercentage.text()))
-        update_settings('screenshot_end_percentage', str(self.screenshotEndPercentage.text()))
+        # Fix locale issue: QDoubleSpinBox may use comma on macOS, replace with dot for JSON
+        update_settings('screenshot_threshold', str(self.screenshotThreshold.text()).replace(',', '.'))
+        update_settings('screenshot_start_percentage', str(self.screenshotStartPercentage.text()).replace(',', '.'))
+        update_settings('screenshot_end_percentage', str(self.screenshotEndPercentage.text()).replace(',', '.'))
         if self.doGetThumbnail.isChecked():
             update_settings('do_get_thumbnail', 'True')
         else:
             update_settings('do_get_thumbnail', '')
         update_settings('thumbnail_rows', str(self.thumbnailRows.text()))
         update_settings('thumbnail_cols', str(self.thumbnailCols.text()))
-        update_settings('thumbnail_delay', str(self.thumbnailDelay.text()))
+        # Fix locale issue: QDoubleSpinBox may use comma on macOS, replace with dot for JSON
+        update_settings('thumbnail_delay', str(self.thumbnailDelay.text()).replace(',', '.'))
         if self.autoUploadScreenshot.isChecked():
             update_settings('auto_upload_screenshot', 'True')
         else:
@@ -2097,6 +2226,10 @@ class settings(QDialog, Ui_Settings):
             update_settings('delete_screenshot', 'True')
         else:
             update_settings('delete_screenshot', '')
+        if self.autoDownloadUploadPoster.isChecked():
+            update_settings('auto_download_upload_poster', 'True')
+        else:
+            update_settings('auto_download_upload_poster', '')
         if self.mediaInfoSuffix.isChecked():
             update_settings('media_info_suffix', 'True')
         else:
@@ -2157,7 +2290,12 @@ class GetPtGenThread(QThread):
 
             # 发送信号，包括请求的结果
             print('PT-Gen请求成功，开始返回结果')
-            self.result_signal.emit(get_pt_gen_description_success, response)
+            if get_pt_gen_description_success:
+                # response is now (format_data, full_data)
+                format_data, full_data = response
+                self.result_signal.emit(get_pt_gen_description_success, format_data)
+            else:
+                self.result_signal.emit(get_pt_gen_description_success, response)
             print('返回结果成功')
         except Exception as e:
             print(f'异常发生：{e}')
