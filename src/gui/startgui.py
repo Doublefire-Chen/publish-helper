@@ -581,6 +581,10 @@ class mainwindow(QMainWindow, Ui_Mainwindow):
                         return
                     else:
                         print(f'获得的PT-Gen Api响应：{description}')
+                        
+                        # Process poster if auto download and upload is enabled
+                        description = self._process_poster_in_description(description)
+                        
                         self.descriptionBrowserMovie.setText(description)
                 else:
                     self.debugBrowserMovie.append('获取PT-Gen信息失败，响应为空')
@@ -1247,13 +1251,17 @@ class mainwindow(QMainWindow, Ui_Mainwindow):
                 return
             if get_success:
                 description = response
-                self.descriptionBrowserTV.setText(description)
                 if description:
                     print(f'获得的PT-Gen Api响应：{description}')
                     if description == '':
                         self.debugBrowserTV.append('获取PT-Gen信息失败，响应为空')
                         get_name_tv_failure_number += 1
                         return
+                    
+                    # Process poster if auto download and upload is enabled
+                    description = self._process_poster_in_description(description)
+                    
+                    self.descriptionBrowserTV.setText(description)
                 else:
                     self.debugBrowserTV.append('获取PT-Gen信息失败，响应为空')
                     get_name_tv_failure_number += 1
