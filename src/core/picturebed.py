@@ -59,16 +59,20 @@ def lsky_pro_picture_bed(api_url, api_token, frame_path):
 
     try:
         data = json.loads(res.text)
+        # 检查data是否为None或不包含预期的结构
+        if data is None:
+            print(f'图床API返回了空数据，响应文本：{res.text}')
+            return False, f'图床API返回了空数据，响应文本：{res.text}'
         # 提取所需的URL
         image_bbs_url = data['data']['links']['bbcode']
         print(image_bbs_url)
         return True, image_bbs_url
     except KeyError as e:
-        print(f'图床响应结果缺少所需的值：{str(e)}，{str(res)}')
-        return False, f'图床响应结果缺少所需的值：{str(e)}，{str(res)}'
+        print(f'图床响应结果缺少所需的值：{str(e)}，响应内容：{res.text}')
+        return False, f'图床响应结果缺少所需的值：{str(e)}，响应内容：{res.text}'
     except json.JSONDecodeError as e:
-        print(f'处理返回的JSON过程中出现错误：{str(e)}，{str(res)}')
-        return False, f'处理返回的JSON过程中出现错误：{str(e)}，{str(res)}'
+        print(f'处理返回的JSON过程中出现错误：{str(e)}，响应文本：{res.text}')
+        return False, f'处理返回的JSON过程中出现错误：{str(e)}，响应文本：{res.text}'
 
 
 # 薄荷图床

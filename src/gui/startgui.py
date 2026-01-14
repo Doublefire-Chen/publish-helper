@@ -475,7 +475,7 @@ class mainwindow(QMainWindow, Ui_Mainwindow):
         else:
             self.debugBrowserMovie.append(f'您的视频文件路径有误：{response}')
 
-    def handle_upload_picture_movie_result(self, upload_success, api_response, screenshot_path):
+    def handle_upload_picture_movie_result(self, upload_success, api_response, screenshot_path, is_cover, is_thumbnail):
         # 这个函数用于处理上传的结果，它将在主线程中被调用
         # 更新UI，显示上传结果等
         print('接受到上传图床线程请求的结果')
@@ -1152,7 +1152,7 @@ class mainwindow(QMainWindow, Ui_Mainwindow):
         else:
             self.debugBrowserTV.append('您的视频文件路径有误')
 
-    def handle_upload_picture_tv_result(self, upload_success, api_response, screenshot_path):
+    def handle_upload_picture_tv_result(self, upload_success, api_response, screenshot_path, is_cover, is_thumbnail):
         # 这个函数用于处理上传的结果，它将在主线程中被调用
         # 更新UI，显示上传结果等
         print('接受到上传图床线程请求的结果')
@@ -1782,7 +1782,7 @@ class mainwindow(QMainWindow, Ui_Mainwindow):
         else:
             self.debugBrowserPlaylet.append(f'您的视频文件路径有误：{response}')
 
-    def handle_upload_picture_playlet_result(self, upload_success, api_response, screenshot_path, is_cover):
+    def handle_upload_picture_playlet_result(self, upload_success, api_response, screenshot_path, is_cover, is_thumbnail):
         # 这个函数用于处理上传的结果，它将在主线程中被调用
         # 更新UI，显示上传结果等
         print(f'is_cover: {is_cover}')
@@ -2330,7 +2330,7 @@ class UploadPictureThread(QThread):
             print('返回结果成功')
         except Exception as e:
             print(f'异常发生：{e}')
-            self.result_signal.emit(False, f'异常发生：{e}', self.picture_path)
+            self.result_signal.emit(False, f'异常发生：{e}', self.picture_path, self.is_cover, self.is_thumbnail)
             # 这里可以发射一个包含错误信息的信号
 
 
