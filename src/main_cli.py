@@ -213,29 +213,42 @@ def process_movie(resource_url, video_path):
         print("正在重命名...")
         if is_video_path == 1:  # Single file
             success, new_path = rename_file(video_file, file_name)
+            if success:
+                # Normalize path for cross-platform compatibility
+                new_path = os.path.normpath(new_path)
+                print_success(f"重命名成功: {new_path}")
+                video_file = new_path
+                video_path = os.path.dirname(new_path)
+            else:
+                print_error(f"重命名失败: {new_path}")
         else:  # Directory
             success, new_path = rename_folder(video_path, file_name)
-        
-        if success:
-            print_success(f"重命名成功: {new_path}")
-            video_path = new_path if is_video_path == 2 else os.path.dirname(new_path)
-        else:
-            print_error(f"重命名失败: {new_path}")
-    
+            if success:
+                # Normalize path for cross-platform compatibility
+                new_path = os.path.normpath(new_path)
+                print_success(f"重命名成功: {new_path}")
+                video_path = new_path
+                # Re-find the video file in the renamed directory
+                _, video_file = check_path_and_find_video(video_path)
+                video_file = os.path.normpath(video_file)
+            else:
+                print_error(f"重命名失败: {new_path}")
+
     # Screenshots
     screenshot_storage = get_settings('screenshot_storage_path')
     screenshot_num = int(get_settings('screenshot_number') or 4)
-    
+
     print("正在生成截图...")
     success, screenshots = get_screenshot(video_file, screenshot_storage, screenshot_num, 0.02, 0.1, 0.9)
     if success:
         print_success(f"截图生成成功: {len(screenshots)} 张")
     else:
         print_error(f"截图失败: {screenshots}")
-    
+
     # Torrent
+    torrent_storage = get_settings('torrent_storage_path')
     print("正在制作种子...")
-    success, torrent_result = make_torrent(video_path)
+    success, torrent_result = make_torrent(video_path, torrent_storage)
     if success:
         print_success(f"种子制作成功: {torrent_result}")
     else:
