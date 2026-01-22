@@ -110,6 +110,60 @@ def select_content_type():
         print_error("请输入 1, 2, 或 3")
 
 
+def select_from_combo_box(label, combo_data_name):
+    """
+    Interactive selection from combo box data with numbered options.
+    User can select by number or enter custom value.
+
+    Args:
+        label: Display label (e.g., "来源 Source")
+        combo_data_name: Name of combo box data ('source', 'team', etc.)
+
+    Returns:
+        Selected or custom value
+    """
+    from src.core.tool import get_combo_box_data
+
+    print(f"\n{Colors.BOLD}选择 {label}:{Colors.END}")
+
+    # Get combo box data
+    success, data_list = get_combo_box_data(combo_data_name)
+
+    if not success or not data_list:
+        # Fallback if no data available
+        return prompt(f"{label}", "")
+
+    # Filter out empty strings and display options
+    valid_options = [item for item in data_list if item.strip()]
+
+    if not valid_options:
+        return prompt(f"{label}", "")
+
+    # Display numbered options
+    for idx, option in enumerate(valid_options, 1):
+        print(f"  [{idx}] {option}")
+    print(f"  [0] 自定义 / Custom")
+    print()
+
+    while True:
+        choice = prompt(f"选择数字或直接输入 / Select number or enter custom", "1")
+
+        # Check if it's a number selection
+        if choice.isdigit():
+            choice_num = int(choice)
+            if choice_num == 0:
+                # Custom input
+                custom = prompt(f"输入自定义 {label}", "")
+                return custom if custom else valid_options[0]
+            elif 1 <= choice_num <= len(valid_options):
+                return valid_options[choice_num - 1]
+            else:
+                print_error(f"请输入 0-{len(valid_options)} 之间的数字")
+        else:
+            # Direct custom input
+            return choice if choice else valid_options[0]
+
+
 def process_movie(resource_url, video_path):
     """Process a movie with the one-key workflow."""
     total_steps = 6
@@ -182,25 +236,9 @@ def process_movie(resource_url, video_path):
     # Step 5: Generate file name
     print_step(5, total_steps, "生成文件名...")
 
-    # Get source and team from settings or combo box data
-    from src.core.tool import get_combo_box_data
-
-    # Try to get default values from combo box data
-    source_success, source_list = get_combo_box_data('source')
-    team_success, team_list = get_combo_box_data('team')
-
-    # Use first non-empty value or fallback
-    source = source_list[0] if source_success and source_list and source_list[0] else 'WEB-DL'
-    team = team_list[0] if team_success and team_list and team_list[0] else 'Anonymous'
-
-    # Allow user to override
-    source_input = prompt(f"来源 Source", source)
-    team_input = prompt(f"制作组 Team", team)
-
-    if source_input:
-        source = source_input
-    if team_input:
-        team = team_input
+    # Interactive selection for source and team
+    source = select_from_combo_box("来源 Source", "source")
+    team = select_from_combo_box("制作组 Team", "team")
 
     other_titles_str = ' / '.join(other_names) if other_names else ''
     actors_str = ' / '.join(actors) if actors else ''
