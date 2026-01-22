@@ -263,12 +263,15 @@ def prompt_media_type():
     print("  1. 电影 / Movie")
     print("  2. 电视剧 / TV Series")
     print("  3. 短剧 / Playlet")
+    print("  0/q. 退出 / Quit")
 
     while True:
         choice = prompt("选择 / Choice", "1")
         if choice in ['1', '2', '3']:
             return {'1': 'movie', '2': 'tv', '3': 'playlet'}[choice]
-        print_error("请输入 1, 2, 或 3")
+        if choice in ['0', 'q', 'Q']:
+            return None
+        print_error("请输入 0, 1, 2, 或 3")
 
 
 def select_from_combo_box(label, combo_data_name):
@@ -1560,6 +1563,9 @@ def main():
 
     # Select content type
     content_type = prompt_media_type()
+    if content_type is None:
+        print("\n再见 / Goodbye!")
+        return 0
     print()
 
     # Initialize variables
