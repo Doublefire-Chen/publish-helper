@@ -568,21 +568,37 @@ def main():
     # Expand user path (~) to full home directory path
     video_path = os.path.expanduser(video_path)
 
-    # On Windows, realpath() automatically expands short (8.3) paths like PROGRA~1
-    # On all platforms, it resolves symbolic links and normalizes the path
-    # Note: realpath() only expands paths that exist up to that point
-    try:
-        original_path = video_path
-        video_path = os.path.realpath(video_path)
-        if video_path != original_path and '~' in original_path:
-            print(f"  展开路径为: {video_path}")
-    except (OSError, ValueError) as e:
-        # If realpath fails, fall back to normpath
-        print_warning(f"  路径规范化警告: {e}")
-        video_path = os.path.normpath(video_path)
+    # Normalize path separators
+    video_path = os.path.normpath(video_path)
 
-    if not os.path.exists(video_path):
+    # Check if the original path (potentially with short names) exists first
+    original_path = video_path
+    path_exists = os.path.exists(original_path)
+
+    # Only attempt expansion if the original path doesn't exist
+    # This preserves working short paths and only expands when needed
+    if not path_exists:
+        # Try to expand short (8.3) paths - realpath() does this on Windows
+        # Note: realpath() only works on paths that exist, so this may not help
+        try:
+            expanded_path = os.path.realpath(video_path)
+            if os.path.exists(expanded_path):
+                video_path = expanded_path
+                path_exists = True
+                if '~' in original_path:
+                    print(f"  展开路径为: {video_path}")
+        except (OSError, ValueError) as e:
+            pass  # Keep original path
+
+    if not path_exists:
         print_error(f"路径不存在: {video_path}")
+
+        # If the original had short names, show that we tried to expand
+        if original_path != video_path and '~' in original_path:
+            print_warning(f"  原始短路径: {original_path}")
+            print_warning(f"  尝试展开后: {video_path}")
+            print_warning("  两者都不存在")
+
         print_warning("\n建议获取正确路径的方法:")
         print_warning("  1. 在文件资源管理器中，按住 Shift 键，右键点击文件")
         print_warning("  2. 选择 '复制为路径' / 'Copy as path'")
