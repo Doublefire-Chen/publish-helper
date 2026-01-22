@@ -115,42 +115,47 @@ def process_poster(
 ) -> Tuple[bool, str]:
     """
     Download poster, upload to image hosting, and clean up temporary file.
-    
+
     Main orchestration function that:
     1. Downloads the poster from Douban/IMDb
     2. Uploads it to the configured image hosting service
-    3. Deletes the temporary file
+    3. Deletes the temporary file (only on success)
     4. Returns the uploaded image URL
-    
+
     Args:
         poster_url: URL of the poster image from Douban/IMDb
         picture_bed_api_url: Image hosting API URL
         picture_bed_api_token: Image hosting API token
         temp_dir: Temporary directory for downloads (optional)
-        
+
     Returns:
         Tuple of (success: bool, uploaded_url_or_error: str)
     """
     temp_file_path = None
-    
+    upload_success = False
+
     try:
         # Use provided temp_dir or create one
         if temp_dir is None:
             temp_dir = tempfile.gettempdir()
-        
+
         # Create a unique temporary file path
         temp_file_path = os.path.join(temp_dir, f'poster_{id(poster_url)}.jpg')
-        
+
         print('=== Starting poster processing ===')
         print(f'Poster URL: {poster_url}')
         print(f'Temp file path: {temp_file_path}')
-        
+
         # Step 1: Download the poster
         download_success, download_result = download_poster(poster_url, temp_file_path)
-        
+
         if not download_success:
             return False, f'Failed to download poster: {download_result}'
-        
+
+        # Print file size for debugging
+        file_size = os.path.getsize(temp_file_path)
+        print(f'Downloaded poster file size: {file_size} bytes')
+
         # Step 2: Upload to image hosting
         print('Uploading poster to image hosting service...')
         upload_success, upload_result = upload_picture(
@@ -158,28 +163,30 @@ def process_poster(
             picture_bed_api_token,
             temp_file_path
         )
-        
+
         if not upload_success:
+            print(f'Upload failed. Temp file kept for debugging: {temp_file_path}')
+            print(f'Temp file size: {file_size} bytes')
             return False, f'Failed to upload poster: {upload_result}'
-        
+
         print(f'Poster uploaded successfully: {upload_result}')
-        
+
         # upload_result is in BBCode format: [img]url[/img]
         # Extract the URL
         if upload_result.startswith('[img]') and upload_result.endswith('[/img]'):
             uploaded_url = upload_result[5:-6]  # Remove [img] and [/img]
         else:
             uploaded_url = upload_result
-        
+
         return True, uploaded_url
-        
+
     except Exception as e:
         print(f'Error during poster processing: {e}')
         return False, f'Error during poster processing: {str(e)}'
-        
+
     finally:
-        # Step 3: Clean up temporary file
-        if temp_file_path and os.path.exists(temp_file_path):
+        # Step 3: Clean up temporary file only on successful upload
+        if upload_success and temp_file_path and os.path.exists(temp_file_path):
             try:
                 os.remove(temp_file_path)
                 print(f'Temporary poster file deleted: {temp_file_path}')
