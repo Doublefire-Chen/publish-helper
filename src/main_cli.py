@@ -570,6 +570,7 @@ def main():
 
     # On Windows, realpath() automatically expands short (8.3) paths like PROGRA~1
     # On all platforms, it resolves symbolic links and normalizes the path
+    # Note: realpath() only expands paths that exist up to that point
     try:
         original_path = video_path
         video_path = os.path.realpath(video_path)
@@ -582,17 +583,45 @@ def main():
 
     if not os.path.exists(video_path):
         print_error(f"路径不存在: {video_path}")
-        print_warning("提示: 请在文件资源管理器中右键复制完整路径，或拖拽文件到终端")
+        print_warning("\n建议获取正确路径的方法:")
+        print_warning("  1. 在文件资源管理器中，按住 Shift 键，右键点击文件")
+        print_warning("  2. 选择 '复制为路径' / 'Copy as path'")
+        print_warning("  3. 或直接拖拽文件到此终端窗口")
 
-        # Try to show which part of the path doesn't exist (debugging aid)
+        # Check if this looks like a nested duplicate path issue
+        if os.sep in video_path:
+            path_parts = video_path.split(os.sep)
+            # Look for duplicate folder names
+            seen = {}
+            for i, part in enumerate(path_parts):
+                if part and not part.endswith(':'):
+                    # Check if folder name appears multiple times
+                    base_name = part.split('.')[0]  # Get name before first dot
+                    if base_name in seen:
+                        print_warning(f"\n⚠ 检测到重复的文件夹名称: '{base_name}'")
+                        print_warning("  这可能是复制路径时出错，请检查实际的文件夹结构")
+                        break
+                    seen[base_name] = i
+
+        # Show which part of the path doesn't exist (debugging aid)
         parts = video_path.split(os.sep)
         if parts:
-            test_path = parts[0] if parts[0] else os.sep
-            for part in parts[1:]:
-                test_path = os.path.join(test_path, part)
-                if not os.path.exists(test_path):
-                    print_warning(f"  不存在的路径段: {test_path}")
-                    break
+            # Handle Windows drive letter properly (e.g., "C:")
+            if sys.platform == 'win32' and parts[0].endswith(':'):
+                test_path = parts[0] + os.sep
+            else:
+                test_path = parts[0] if parts[0] else os.sep
+
+            if not os.path.exists(test_path):
+                print_warning(f"\n  驱动器或根目录不存在: {test_path}")
+            else:
+                for part in parts[1:]:
+                    if not part:  # Skip empty parts
+                        continue
+                    test_path = os.path.join(test_path, part)
+                    if not os.path.exists(test_path):
+                        print_warning(f"\n  第一个不存在的路径段: {test_path}")
+                        break
         return 1
     print()
 
