@@ -57,7 +57,7 @@ class PathCompleterWithSlash(PathCompleter):
         # Collect all completions first to check count
         completions = list(super().get_completions(document, complete_event))
 
-        # Only add separator if there's exactly one completion (unambiguous)
+        # Only add separator if there's exactly one completion (unambiguous) AND it's a directory
         if len(completions) == 1:
             completion = completions[0]
             # PathCompleter adds "/" to display for directories but not to completion.text
@@ -87,8 +87,25 @@ class PathCompleterWithSlash(PathCompleter):
                 yield completion
         else:
             # Multiple completions: yield them all as-is for cycling
+            # But also add separator to directory completions for display consistency
             for completion in completions:
-                yield completion
+                display_str = completion.display if isinstance(
+                    completion.display, str) else str(completion.display)
+                is_directory = display_str.endswith('/')
+
+                if is_directory and os.sep == '\\':
+                    # On Windows, show backslash in display even when multiple options
+                    new_display = display_str[:-1] + '\\'
+                    yield Completion(
+                        text=completion.text,
+                        start_position=completion.start_position,
+                        display=new_display,
+                        display_meta=completion.display_meta,
+                        style=completion.style,
+                        selected_style=completion.selected_style,
+                    )
+                else:
+                    yield completion
 
 
 # ANSI color codes for terminal output
