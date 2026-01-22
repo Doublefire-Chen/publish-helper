@@ -67,9 +67,8 @@ class PathCompleterWithSlash(PathCompleter):
         if len(completions) == 1:
             completion = completions[0]
             # PathCompleter adds "/" to display for directories but not to completion.text
-            # Check if display ends with "/" to identify directories
-            display_str = completion.display if isinstance(
-                completion.display, str) else str(completion.display)
+            # Use display_text to get plain string from FormattedText
+            display_str = completion.display_text
             is_directory = display_str.endswith('/')
 
             if is_directory:
@@ -102,8 +101,8 @@ class PathCompleterWithSlash(PathCompleter):
             # Multiple completions: yield them all as-is for cycling
             # But also add separator to directory completions for display consistency
             for completion in completions:
-                display_str = completion.display if isinstance(
-                    completion.display, str) else str(completion.display)
+                # Use display_text to get plain string from FormattedText
+                display_str = completion.display_text
                 is_directory = display_str.endswith('/')
 
                 if is_directory and os.sep == '\\':
