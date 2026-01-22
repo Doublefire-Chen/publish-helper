@@ -11,7 +11,15 @@ from src.core.tool import get_settings, get_abbreviation, chinese_to_int
 
 # 从PT-Gen响应中读取关键数据
 def get_pt_gen_info(description):
-    print(f'获取到简介：{description}')
+    print(f'[DEBUG] ===== 开始解析PT-Gen响应 =====')
+    print(f'[DEBUG] 简介长度: {len(description)} 字符')
+    print(f'[DEBUG] 简介前200字符: {repr(description[:200])}')
+    
+    # Check for common prefixes
+    has_circle = '◎' in description
+    has_flower = '❁' in description
+    print(f'[DEBUG] 包含◎: {has_circle}, 包含❁: {has_flower}')
+    
     description = description.replace('\\n', '\n')
     description = description.replace('\\\n', '\\n')
 
@@ -36,10 +44,29 @@ def get_pt_gen_info(description):
     print(f'[DEBUG] 年份匹配结果: {year_match.group(1) if year_match else "未找到"}')
 
     # 正则表达式获取名称 - 支持两种前缀格式
+    # Try multiple patterns for flexibility
     pattern = prefix_pattern + r'\s*片\s*名[：:\s]*(.*?)\n|' + prefix_pattern + r'\s*译\s*名[：:\s]*(.*?)\n'
     matches = re.findall(pattern, description)
     
+    print(f'[DEBUG] 名称正则: {pattern}')
     print(f'[DEBUG] 名称匹配原始结果: {matches}')
+    
+    # If no matches, try alternative patterns with full-width characters
+    if not matches:
+        print('[DEBUG] 标准模式未匹配，尝试备用模式...')
+        # Try with more flexible spacing (including full-width spaces \u3000)
+        alt_pattern = r'[◎❁][\s\u3000]*片[\s\u3000]*名[\s\u3000：:]+([^\n]+)'
+        alt_matches = re.findall(alt_pattern, description)
+        print(f'[DEBUG] 备用片名模式结果: {alt_matches}')
+        
+        alt_pattern2 = r'[◎❁][\s\u3000]*译[\s\u3000]*名[\s\u3000：:]+([^\n]+)'
+        alt_matches2 = re.findall(alt_pattern2, description)
+        print(f'[DEBUG] 备用译名模式结果: {alt_matches2}')
+        
+        # Combine results
+        if alt_matches or alt_matches2:
+            matches = [(m, '') for m in alt_matches] + [('', m) for m in alt_matches2]
+            print(f'[DEBUG] 使用备用模式结果: {matches}')
 
     # 将片名放第一位
     if matches:
@@ -48,14 +75,14 @@ def get_pt_gen_info(description):
     # Extract and separate the titles
     titles = [title for match in matches for title in match if title]
     separated_titles = [title.strip() for titles_group in titles for title in titles_group.split('/')]
-    print(f'获取的名称：{str(separated_titles)}')
+    print(f'[DEBUG] 获取的名称: {str(separated_titles)}')
 
     english_title = ''
     english_pattern = r'^[A-Za-z\-\—\:\s\(\)\'\'\@\#\$\%\^\&\*\!\?\,\.\;\[\]\{\}\|\<\>\`\~\d\u2160-\u2188]+$'
     for title in separated_titles:
         if re.match(english_pattern, title):
             english_title += title
-            print(f'英文名称是：{english_title}')
+            print(f'[DEBUG] 英文名称是: {english_title}')
             break
 
     original_title = ''
