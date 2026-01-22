@@ -10,8 +10,10 @@ Usage:
 # NOTE: Import order is critical - stdlib must come before local imports
 # to avoid UnboundLocalError with os module
 from prompt_toolkit.shortcuts import CompleteStyle
-from prompt_toolkit.completion import PathCompleter
+from prompt_toolkit.completion import PathCompleter, Completer, Completion, CompleteEvent
+from prompt_toolkit.document import Document
 from prompt_toolkit import prompt as pt_prompt
+from typing import Iterable
 from src.core.autofeed import get_auto_feed_link
 from src.core.mediainfo import get_media_info
 from src.core.picturebed import upload_picture
@@ -43,6 +45,29 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
 # Import prompt_toolkit for enhanced path completion
+
+
+class PathCompleterWithSlash(PathCompleter):
+    """Custom PathCompleter that adds '/' or '\\' to directory completions."""
+
+    def get_completions(
+        self, document: Document, complete_event: CompleteEvent
+    ) -> Iterable[Completion]:
+        """Generate completions with trailing slash for directories."""
+        for completion in super().get_completions(document, complete_event):
+            # If this is a directory (display ends with /), add it to the actual completion text too
+            if isinstance(completion.display, str) and completion.display.endswith('/'):
+                # Create new completion with slash in the text
+                yield Completion(
+                    text=completion.text + os.sep,  # Use os.sep for cross-platform compatibility
+                    start_position=completion.start_position,
+                    display=completion.display,
+                    display_meta=completion.display_meta,
+                    style=completion.style,
+                    selected_style=completion.selected_style,
+                )
+            else:
+                yield completion
 
 
 # ANSI color codes for terminal output
@@ -85,7 +110,7 @@ def print_settings_summary():
     print(f"  截图设置: 数量={screenshot_num} | 缩略图={_status(do_thumbnail)} | 自动上传={_status(auto_upload)} | 上传后删除={_status(delete_after_upload)}")
 
     # Show path completion hint
-    print(f"\n  {Colors.GREEN}✓ 路径自动补全已启用 (按 Tab 键补全路径){Colors.END}")
+    print(f"\n  {Colors.GREEN}✓ 路径自动补全已启用 (Tab 键选择补全，Enter 提交){Colors.END}")
 
 
 def _status(enabled):
@@ -124,8 +149,8 @@ def prompt(message, default=None):
 
 def prompt_path(message, default=None):
     """Prompt for file path with tab completion support using prompt_toolkit."""
-    # Use prompt_toolkit with PathCompleter for tab completion
-    completer = PathCompleter(expanduser=True)
+    # Use custom PathCompleter that adds slash to directories
+    completer = PathCompleterWithSlash(expanduser=True)
 
     if default:
         result = pt_prompt(
