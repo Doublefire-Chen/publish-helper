@@ -57,6 +57,12 @@ class PathCompleterWithSlash(PathCompleter):
         # Collect all completions first to check count
         completions = list(super().get_completions(document, complete_event))
 
+        # Debug: print completion count (remove after testing)
+        # import sys
+        # print(f"\nDEBUG: Found {len(completions)} completions", file=sys.stderr)
+        # for c in completions:
+        #     print(f"  - text='{c.text}' display='{c.display}' start_pos={c.start_position}", file=sys.stderr)
+
         # Only add separator if there's exactly one completion (unambiguous) AND it's a directory
         if len(completions) == 1:
             completion = completions[0]
@@ -74,12 +80,15 @@ class PathCompleterWithSlash(PathCompleter):
                     # On Windows, replace the trailing / with \
                     new_display = display_str[:-1] + '\\'
 
-                # If completion.text is empty (user already typed full directory name),
-                # we need to insert just the separator
-                new_text = completion.text + os.sep if completion.text else os.sep
+                # If completion.text is empty or None, insert just the separator
+                # Otherwise append separator to the completion text
+                if completion.text:
+                    new_text = completion.text + os.sep
+                else:
+                    new_text = os.sep
 
                 yield Completion(
-                    text=new_text,  # Use os.sep for cross-platform compatibility
+                    text=new_text,
                     start_position=completion.start_position,
                     display=new_display,
                     display_meta=completion.display_meta,
@@ -108,6 +117,8 @@ class PathCompleterWithSlash(PathCompleter):
                         style=completion.style,
                         selected_style=completion.selected_style,
                     )
+                else:
+                    yield completion
                 else:
                     yield completion
 
