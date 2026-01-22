@@ -174,8 +174,21 @@ def process_movie(resource_url, video_path):
 
     success, response = get_pt_gen_description(pt_gen_api_url, resource_url)
     if not success:
-        print_error(f"获取 PT-Gen 失败: {response}")
-        return False
+        print_warning(f"主接口失败: {response}")
+
+        # Try backup API
+        pt_gen_api_url_backup = get_settings('pt_gen_api_url_backup')
+        if pt_gen_api_url_backup and pt_gen_api_url_backup != pt_gen_api_url:
+            print(f"  尝试备用接口: {pt_gen_api_url_backup}")
+            success, response = get_pt_gen_description(
+                pt_gen_api_url_backup, resource_url)
+            if not success:
+                print_error(f"备用接口也失败: {response}")
+                return False
+            print_success("备用接口获取成功")
+        else:
+            print_error("未配置备用接口或备用接口与主接口相同")
+            return False
 
     # Response is a tuple (description_text, response_dict)
     # Extract just the description text for parsing
