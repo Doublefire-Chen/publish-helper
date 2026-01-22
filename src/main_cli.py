@@ -262,12 +262,18 @@ def main():
         print_error("视频路径不能为空")
         return 1
     
-    # Expand user path and check existence
+    # Strip surrounding quotes (common when pasting paths on Windows)
+    video_path = video_path.strip('"\'')
+    
+    # Expand user path and normalize for cross-platform
     video_path = os.path.expanduser(video_path)
+    video_path = os.path.normpath(video_path)
+    
     if not os.path.exists(video_path):
         print_error(f"路径不存在: {video_path}")
         return 1
     print()
+
     
     # Process based on content type
     print(f"{Colors.BOLD}开始处理 / Starting...{Colors.END}\n")
