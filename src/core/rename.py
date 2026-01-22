@@ -15,16 +15,31 @@ def get_pt_gen_info(description):
     description = description.replace('\\n', '\n')
     description = description.replace('\\\n', '\\n')
 
-    # 正则表达式
-    categories_match = re.search(r'◎类　　别\s*([^\n]*)', description)
-    episodes_match = re.search(r'◎集　　数\s*(\d+)', description)  # 匹配集数
-    year_match = re.search(r'◎年　　代\s*(\d{4})', description)
+    # Support both ◎ and ❁ prefixes used by different PT-Gen APIs
+    # Use character class [◎❁] to match either prefix
+    prefix_pattern = r'[◎❁]'
+    
+    # 正则表达式 - 支持两种前缀格式
+    categories_match = re.search(prefix_pattern + r'\s*类\s*别[：:\s]*([^\n]*)', description)
+    episodes_match = re.search(prefix_pattern + r'\s*集\s*数[：:\s]*(\d+)', description)  # 匹配集数
+    
+    # 年份匹配 - 支持多种格式
+    year_match = re.search(prefix_pattern + r'\s*年\s*代[：:\s]*(\d{4})', description)
     if not year_match:
-        year_match = re.search(r'◎上映日期\s*(\d{4})', description)
+        year_match = re.search(prefix_pattern + r'\s*上映日期[：:\s]*(\d{4})', description)
+    if not year_match:
+        # Fallback: try to find year in any common format
+        year_match = re.search(r'年\s*代[：:\s]*(\d{4})', description)
+    if not year_match:
+        year_match = re.search(r'上映日期[：:\s]*(\d{4})', description)
+    
+    print(f'[DEBUG] 年份匹配结果: {year_match.group(1) if year_match else "未找到"}')
 
-    # 正则表达式获取名称
-    pattern = r'◎片　　名　(.*?)\n|◎译　　名　(.*?)\n'
+    # 正则表达式获取名称 - 支持两种前缀格式
+    pattern = prefix_pattern + r'\s*片\s*名[：:\s]*(.*?)\n|' + prefix_pattern + r'\s*译\s*名[：:\s]*(.*?)\n'
     matches = re.findall(pattern, description)
+    
+    print(f'[DEBUG] 名称匹配原始结果: {matches}')
 
     # 将片名放第一位
     if matches:
@@ -58,10 +73,11 @@ def get_pt_gen_info(description):
 
     # 类别
     categories = categories_match.group(1).strip() if categories_match else ''
+    print(f'[DEBUG] 类别匹配结果: {categories}')
 
-    # 匹配“◎主　　演”或“◎演　　员”及其后的多行内容
+    # 匹配"◎主　　演"或"◎演　　员" 或 "❁主演" 等格式
     actor_pattern = re.compile(
-        r'(◎主　　演|◎演　　员)\s*((?:[\s　]*.*?(?:\n|$))*)',  # 注意这里的 [\s　] 用于匹配半角和全角空格
+        prefix_pattern + r'\s*(主\s*演|演\s*员)[：:\s]*((?:[\s　]*.*?(?:\n|$))*)',
         re.MULTILINE | re.DOTALL
     )
     # 搜索匹配
@@ -90,7 +106,7 @@ def get_pt_gen_info(description):
             if len(actors) == 5:
                 break
 
-    if '◎语　　言' in categories:
+    if '◎语　　言' in categories or '❁ 语' in categories:
         categories = '暂无分类'
 
     # 提取集数
@@ -117,14 +133,15 @@ def get_pt_gen_info(description):
     else:
         season = None
 
+    year_result = year_match.group(1) if year_match else ''
     print('原始名称：', original_title)
     print('英文名称：', english_title)
-    print('年份：', year_match.group(1) if year_match else '')
+    print('年份：', year_result)
     print('其他名称：', other_titles)
     print('类别：', categories)
     print('演员：', str(actors))
-    return original_title, english_title, year_match.group(
-        1) if year_match else '', other_titles, categories, actors, episodes, season
+    return original_title, english_title, year_result, other_titles, categories, actors, episodes, season
+
 
 
 def get_video_info(file_path):
