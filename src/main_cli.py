@@ -569,31 +569,56 @@ def main():
     video_path = os.path.expanduser(video_path)
     video_path = os.path.normpath(video_path)
 
-    # On Windows, expand short (8.3) paths to long paths
-    if sys.platform == 'win32':
+    # On Windows, expand short (8.3) paths to long paths progressively
+    if sys.platform == 'win32' and '~' in video_path:
         try:
             import ctypes
             from ctypes import wintypes
 
-            # GetLongPathNameW to convert short paths like C:\PROGRA~1 to C:\Program Files
+            # GetLongPathNameW to convert short paths
             _GetLongPathNameW = ctypes.windll.kernel32.GetLongPathNameW
             _GetLongPathNameW.argtypes = [
                 wintypes.LPCWSTR, wintypes.LPWSTR, wintypes.DWORD]
             _GetLongPathNameW.restype = wintypes.DWORD
 
-            buffer_size = 512
-            buffer = ctypes.create_unicode_buffer(buffer_size)
-            ret = _GetLongPathNameW(video_path, buffer, buffer_size)
+            # Try to expand progressively from root to handle partially invalid paths
+            parts = video_path.split(os.sep)
+            expanded_path = parts[0]  # Start with drive letter (e.g., 'C:')
 
-            if ret != 0:
-                video_path = buffer.value
-                print(f"  展开路径为: {video_path}")
+            for part in parts[1:]:
+                test_path = os.path.join(expanded_path, part)
+                if os.path.exists(test_path):
+                    # Try to expand this existing part
+                    buffer_size = 512
+                    buffer = ctypes.create_unicode_buffer(buffer_size)
+                    ret = _GetLongPathNameW(test_path, buffer, buffer_size)
+                    if ret != 0:
+                        expanded_path = buffer.value
+                    else:
+                        expanded_path = test_path
+                else:
+                    # Path doesn't exist, keep short name
+                    expanded_path = test_path
+
+            if expanded_path != video_path:
+                print(f"  展开路径为: {expanded_path}")
+                video_path = expanded_path
         except Exception as e:
-            print_warning(f"  无法展开短路径，使用原路径: {e}")
+            print_warning(f"  无法展开短路径: {e}")
 
     if not os.path.exists(video_path):
         print_error(f"路径不存在: {video_path}")
-        print_warning("提示: 如果路径包含 ~1 等短名称，请尝试输入完整路径")
+        print_warning("提示: 请在文件资源管理器中右键复制文件路径，或拖拽文件到终端")
+
+        # Try to show which part of the path doesn't exist
+        if sys.platform == 'win32':
+            parts = video_path.split(os.sep)
+            test_path = parts[0]
+            for i, part in enumerate(parts[1:], 1):
+                test_path = os.path.join(test_path, part)
+                if not os.path.exists(test_path):
+                    print_warning(f"  不存在的部分从这里开始: {test_path}")
+                    break
         return 1
     print()
 
