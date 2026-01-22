@@ -569,8 +569,31 @@ def main():
     video_path = os.path.expanduser(video_path)
     video_path = os.path.normpath(video_path)
 
+    # On Windows, expand short (8.3) paths to long paths
+    if sys.platform == 'win32':
+        try:
+            import ctypes
+            from ctypes import wintypes
+
+            # GetLongPathNameW to convert short paths like C:\PROGRA~1 to C:\Program Files
+            _GetLongPathNameW = ctypes.windll.kernel32.GetLongPathNameW
+            _GetLongPathNameW.argtypes = [
+                wintypes.LPCWSTR, wintypes.LPWSTR, wintypes.DWORD]
+            _GetLongPathNameW.restype = wintypes.DWORD
+
+            buffer_size = 512
+            buffer = ctypes.create_unicode_buffer(buffer_size)
+            ret = _GetLongPathNameW(video_path, buffer, buffer_size)
+
+            if ret != 0:
+                video_path = buffer.value
+                print(f"  展开路径为: {video_path}")
+        except Exception as e:
+            print_warning(f"  无法展开短路径，使用原路径: {e}")
+
     if not os.path.exists(video_path):
         print_error(f"路径不存在: {video_path}")
+        print_warning("提示: 如果路径包含 ~1 等短名称，请尝试输入完整路径")
         return 1
     print()
 
