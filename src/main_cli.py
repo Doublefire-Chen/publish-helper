@@ -55,9 +55,15 @@ class PathCompleterWithSlash(PathCompleter):
     ) -> Iterable[Completion]:
         """Generate completions with trailing slash for directories."""
         for completion in super().get_completions(document, complete_event):
-            # If this is a directory (display ends with /), add it to the actual completion text too
-            if isinstance(completion.display, str) and completion.display.endswith('/'):
-                # Create new completion with slash in the text
+            # Check if this is a directory by examining the actual filesystem
+            # Get the full path being completed
+            path_before_cursor = document.text_before_cursor
+            completed_path = path_before_cursor[:
+                                                completion.start_position] + completion.text
+            completed_path = os.path.expanduser(completed_path)
+
+            # If it's a directory, add the path separator to the completion text
+            if os.path.isdir(completed_path):
                 yield Completion(
                     text=completion.text + os.sep,  # Use os.sep for cross-platform compatibility
                     start_position=completion.start_position,
