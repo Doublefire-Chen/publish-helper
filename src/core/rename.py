@@ -44,40 +44,50 @@ def get_pt_gen_info(description):
     print(f'[DEBUG] 年份匹配结果: {year_match.group(1) if year_match else "未找到"}')
 
     # 正则表达式获取名称 - 支持两种前缀格式
-    # Try multiple patterns for flexibility
-    pattern = prefix_pattern + r'\s*片\s*名[：:\s]*(.*?)\n|' + prefix_pattern + r'\s*译\s*名[：:\s]*(.*?)\n'
+    # Use [^◎❁\n]* to stop at newline OR next field marker (prevents cross-field capture)
+    pattern = prefix_pattern + r'\s*片\s*名[：:\s]*([^◎❁\n]+)|' + prefix_pattern + r'\s*译\s*名[：:\s]*([^◎❁\n]+)'
     matches = re.findall(pattern, description)
     
     print(f'[DEBUG] 名称正则: {pattern}')
     print(f'[DEBUG] 名称匹配原始结果: {matches}')
     
+    # Filter out empty matches and clean up
+    cleaned_matches = []
+    for match in matches:
+        # Each match is a tuple (片名, 译名) - one will be empty
+        for content in match:
+            if content and content.strip():
+                cleaned_matches.append(content.strip())
+    
+    print(f'[DEBUG] 清理后的名称: {cleaned_matches}')
+    
     # If no matches, try alternative patterns with full-width characters
-    if not matches:
+    if not cleaned_matches:
         print('[DEBUG] 标准模式未匹配，尝试备用模式...')
         # Try with more flexible spacing (including full-width spaces \u3000)
-        alt_pattern = r'[◎❁][\s\u3000]*片[\s\u3000]*名[\s\u3000：:]+([^\n]+)'
+        alt_pattern = r'[◎❁][\s\u3000]*片[\s\u3000]*名[\s\u3000：:]+([^◎❁\n]+)'
         alt_matches = re.findall(alt_pattern, description)
         print(f'[DEBUG] 备用片名模式结果: {alt_matches}')
         
-        alt_pattern2 = r'[◎❁][\s\u3000]*译[\s\u3000]*名[\s\u3000：:]+([^\n]+)'
+        alt_pattern2 = r'[◎❁][\s\u3000]*译[\s\u3000]*名[\s\u3000：:]+([^◎❁\n]+)'
         alt_matches2 = re.findall(alt_pattern2, description)
         print(f'[DEBUG] 备用译名模式结果: {alt_matches2}')
         
         # Combine results
-        if alt_matches or alt_matches2:
-            matches = [(m, '') for m in alt_matches] + [('', m) for m in alt_matches2]
-            print(f'[DEBUG] 使用备用模式结果: {matches}')
+        cleaned_matches = [m.strip() for m in alt_matches if m.strip()] + [m.strip() for m in alt_matches2 if m.strip()]
+        print(f'[DEBUG] 使用备用模式结果: {cleaned_matches}')
 
-    # 将片名放第一位
-    if matches:
-        matches.insert(0, matches.pop())
-
-    # Extract and separate the titles
-    titles = [title for match in matches for title in match if title]
-    separated_titles = [title.strip() for titles_group in titles for title in titles_group.split('/')]
-    print(f'[DEBUG] 获取的名称: {str(separated_titles)}')
+    # Separate titles by '/'
+    separated_titles = []
+    for title_group in cleaned_matches:
+        for title in title_group.split('/'):
+            if title.strip():
+                separated_titles.append(title.strip())
+    
+    print(f'[DEBUG] 分割后的名称: {separated_titles}')
 
     english_title = ''
+
     english_pattern = r'^[A-Za-z\-\—\:\s\(\)\'\'\@\#\$\%\^\&\*\!\?\,\.\;\[\]\{\}\|\<\>\`\~\d\u2160-\u2188]+$'
     for title in separated_titles:
         if re.match(english_pattern, title):
