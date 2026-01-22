@@ -6,9 +6,25 @@ Provides a command-line interface for the one-key workflow.
 Usage:
     python src/main_cli.py
 """
-from src.core.tool import get_settings, check_path_and_find_video, make_torrent, chinese_name_to_pinyin
+# isort: skip_file
+# NOTE: Import order is critical - stdlib must come before local imports
+# to avoid UnboundLocalError with os module
+from src.core.tool import (
+    check_path_and_find_video,
+    chinese_name_to_pinyin,
+    get_settings,
+    make_torrent,
+)
 from src.core.screenshot import get_screenshot, get_thumbnail
-from src.core.rename import get_pt_gen_info, get_video_info, get_name_from_template, rename_file, rename_folder, move_file_to_folder, create_hard_link
+from src.core.rename import (
+    create_hard_link,
+    get_name_from_template,
+    get_pt_gen_info,
+    get_video_info,
+    move_file_to_folder,
+    rename_file,
+    rename_folder,
+)
 from src.core.ptgen import get_pt_gen_description
 from src.core.picturebed import upload_picture
 from src.core.mediainfo import get_media_info
