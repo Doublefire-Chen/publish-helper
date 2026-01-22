@@ -305,19 +305,7 @@ def process_movie(resource_url, video_path):
     print(f"  文件名: {file_name}")
     print(f"{Colors.CYAN}{'='*50}{Colors.END}")
 
-    # Ask if user wants to continue with rename/screenshot/torrent
-    print(f"\n{Colors.BOLD}是否继续执行以下操作? / Continue with?{Colors.END}")
-    print("  - 重命名文件/文件夹")
-    print("  - 生成截图")
-    print("  - 上传图床")
-    print("  - 制作种子")
-
-    choice = prompt("\n继续? [y/N]", "n")
-    if choice.lower() != 'y':
-        print_warning("操作已取消")
-        return True
-
-    # Execute additional operations
+    # Execute additional operations automatically (no interruption)
     print(f"\n{Colors.BOLD}执行后续操作...{Colors.END}")
 
     # Rename (matching GUI logic exactly)
