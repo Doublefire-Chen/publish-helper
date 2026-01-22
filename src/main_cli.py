@@ -208,22 +208,27 @@ def prompt_path(message, default=None):
 
     @kb.add('tab')
     def _(event):
-        """Handle Tab: accept completion and refresh if it's a directory."""
+        """Handle Tab: start/cycle completion and refresh if directory completed."""
         b = event.app.current_buffer
+
+        # Store text before completion to detect if we completed a directory
+        text_before = b.text
+
         if b.complete_state:
-            # There's a completion menu open - get and apply the current completion
-            completion = b.complete_state.current_completion
-            if completion:
-                b.apply_completion(completion)
+            # Completion menu is open
+            if b.complete_state.current_completion:
+                # Apply the current completion
+                b.apply_completion(b.complete_state.current_completion)
+                # Check if we completed to a directory (text now ends with separator)
+                if b.text.endswith(os.sep) or b.text.endswith('/'):
+                    # Trigger new completion to show directory contents
+                    b.start_completion(select_first=False)
             else:
-                b.complete_state = None
-            # Check if text ends with path separator (directory was completed)
-            if b.text.endswith(os.sep) or b.text.endswith('/'):
-                # Trigger new completion to show directory contents
-                b.start_completion(select_first=False)
+                # No completion selected, cycle to next
+                b.complete_next()
         else:
             # No completion menu - start completion
-            b.start_completion(select_first=False)
+            b.start_completion(select_first=True)
 
     if default:
         result = pt_prompt(
