@@ -9,6 +9,12 @@ Usage:
 # isort: skip_file
 # NOTE: Import order is critical - stdlib must come before local imports
 # to avoid UnboundLocalError with os module
+import sys
+from pathlib import Path
+
+# Add project root to sys.path so 'src.core' imports work when running directly
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 from prompt_toolkit.shortcuts import CompleteStyle
 from prompt_toolkit.completion import PathCompleter, Completer, Completion, CompleteEvent
 from prompt_toolkit.document import Document
