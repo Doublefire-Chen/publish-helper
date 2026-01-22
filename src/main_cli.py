@@ -30,6 +30,7 @@ from src.core.tool import (
     check_path_and_find_video,
     chinese_name_to_pinyin,
     get_settings,
+    get_video_files,
     make_torrent,
 )
 import os
@@ -609,6 +610,432 @@ def process_movie(resource_url, video_path):
     return True
 
 
+def process_tv(resource_url, video_path, season, episodes_start):
+    """Process a TV series with the one-key workflow."""
+    total_steps = 6
+
+    # Collect all user choices FIRST before any API calls
+    print(f"\n{Colors.BOLD}请完成以下选择 / Please make your selections:{Colors.END}\n")
+
+    # Get Source and Team selections upfront
+    source = select_from_combo_box("来源 Source", "source")
+    team = select_from_combo_box("制作组 Team", "team")
+
+    print(f"\n{Colors.GREEN}✓ 所有选择已完成，开始自动处理...{Colors.END}\n")
+
+    # Step 1: Get PT-Gen description
+    print_step(1, total_steps, "获取 PT-Gen 信息...")
+    pt_gen_api_url = get_settings('pt_gen_api_url')
+
+    success, response = get_pt_gen_description(pt_gen_api_url, resource_url)
+    if not success:
+        print_warning(f"主接口失败: {response}")
+
+        # Try backup API
+        pt_gen_api_url_backup = get_settings('pt_gen_api_url_backup')
+        if pt_gen_api_url_backup and pt_gen_api_url_backup != pt_gen_api_url:
+            print(f"  尝试备用接口: {pt_gen_api_url_backup}")
+            success, response = get_pt_gen_description(
+                pt_gen_api_url_backup, resource_url)
+            if not success:
+                print_error(f"备用接口也失败: {response}")
+                return False
+            print_success("备用接口获取成功")
+        else:
+            print_error("未配置备用接口或备用接口与主接口相同")
+            return False
+
+    # Response is a tuple (description_text, response_dict)
+    if isinstance(response, tuple):
+        description = response[0]  # First element is the formatted description
+    else:
+        description = response
+
+    print_success("PT-Gen 信息获取成功")
+
+    # Step 2: Parse PT-Gen info
+    print_step(2, total_steps, "解析 PT-Gen 信息...")
+    try:
+        original_title, english_title, year, other_names, categories, actors, episodes, pt_gen_season = get_pt_gen_info(
+            description)
+    except Exception as e:
+        print_error(f"解析 PT-Gen 失败: {e}")
+        return False
+
+    if not year:
+        print_error("未能获取年份信息")
+        return False
+
+    # Validate season
+    if pt_gen_season and str(pt_gen_season) != str(season):
+        print_warning(f"PT-Gen季数 ({pt_gen_season}) 与输入季数 ({season}) 不符")
+        print_warning(f"将使用输入的季数: {season}")
+
+    print_success(
+        f"标题: {original_title or english_title} ({year}) S{season:02d}")
+
+    # Handle missing English title
+    if not english_title and original_title:
+        print_warning("未找到英文名称，尝试生成拼音...")
+        english_title = chinese_name_to_pinyin(original_title)
+        if english_title:
+            print_success(f"拼音名称: {english_title}")
+
+    # Step 3: Get video info and count episodes
+    print_step(3, total_steps, "获取视频信息...")
+    is_video_path, video_file = check_path_and_find_video(video_path)
+    if is_video_path not in [1, 2]:
+        print_error(f"视频路径无效: {video_file}")
+        return False
+
+    # Count episodes
+    episodes_num = 1
+    if is_video_path == 2:  # Folder with multiple files
+        get_video_files_success, response = get_video_files(video_path)
+        if get_video_files_success:
+            video_files = response
+            episodes_num = len(video_files)
+            print_success(f"检测到 {episodes_num} 个视频文件")
+        else:
+            print_error(f"获取视频文件失败: {response}")
+            return False
+
+    # Calculate total episodes info
+    if episodes_start == 1:
+        total_episodes = f'全{episodes_num}集'
+    else:
+        if episodes_num == 1:
+            total_episodes = f'第{episodes_start}集'
+        else:
+            total_episodes = f'第{episodes_start}-{episodes_start + episodes_num - 1}集'
+
+    print_success(f"集数信息: {total_episodes}")
+
+    success, video_info = get_video_info(video_file)
+    if not success:
+        print_error(f"获取视频信息失败: {video_info}")
+        return False
+
+    video_format, video_codec, bit_depth, hdr_format, frame_rate, audio_codec, channels, audio_num = video_info[
+        :8]
+    print_success(f"视频格式: {video_format} {video_codec}")
+
+    # Step 4: Get MediaInfo
+    print_step(4, total_steps, "获取 MediaInfo...")
+    success, media_info = get_media_info(video_file)
+    if success:
+        print_success("MediaInfo 获取成功")
+    else:
+        print_warning(f"MediaInfo 获取失败: {media_info}")
+        media_info = ""
+
+    # Step 5: Generate file name
+    print_step(5, total_steps, "生成文件名...")
+
+    # Format season number (pad with zero if needed)
+    season_str = f"{season:02d}" if season < 10 else str(season)
+    season_number = str(season)  # For template (no padding)
+
+    # Use source and team from initial selections
+    other_titles_str = ' / '.join(other_names) if other_names else ''
+    actors_str = ' / '.join(actors) if actors else ''
+
+    file_name = get_name_from_template(
+        english_title, original_title, season_str, '', year,
+        video_format, source, video_codec, bit_depth, hdr_format,
+        frame_rate, audio_codec, channels, audio_num, team,
+        other_titles_str, season_number, total_episodes, '',
+        categories, actors_str,
+        'file_name_tv'
+    )
+
+    main_title = get_name_from_template(
+        english_title, original_title, season_str, '', year,
+        video_format, source, video_codec, bit_depth, hdr_format,
+        frame_rate, audio_codec, channels, audio_num, team,
+        other_titles_str, season_number, total_episodes, '',
+        categories, actors_str,
+        'main_title_tv'
+    )
+
+    print_success(f"主标题: {main_title}")
+    print_success(f"文件名: {file_name}")
+
+    # Step 6: Summary
+    print_step(6, total_steps, "生成摘要...")
+
+    print(f"\n{Colors.CYAN}{'='*50}{Colors.END}")
+    print(f"{Colors.BOLD}处理结果 / Results:{Colors.END}")
+    print(f"  标题: {original_title}")
+    print(f"  英文: {english_title}")
+    print(f"  年份: {year}")
+    print(f"  季: {season_number} | {total_episodes}")
+    print(f"  类别: {categories}")
+    print(f"  格式: {video_format} {video_codec} {hdr_format}")
+    print(f"  文件名: {file_name}")
+    print(f"{Colors.CYAN}{'='*50}{Colors.END}")
+
+    # Execute additional operations automatically (no interruption)
+    print(f"\n{Colors.BOLD}执行后续操作...{Colors.END}")
+
+    # Rename (matching GUI logic exactly)
+    do_rename = get_settings('rename_file') == 'True'
+    make_dir = get_settings('make_dir') == 'True'
+    create_hardlink = get_settings('create_hard_link') == 'True'
+
+    if do_rename:
+        print("正在重命名...")
+        if is_video_path == 1:  # Single file
+            # If make_dir is enabled, move file into a folder first
+            if make_dir:
+                print("  创建目录并移动文件...")
+                move_success, new_file_path = move_file_to_folder(
+                    video_file, file_name)
+                if move_success:
+                    print_success(f"  文件已移动到目录: {new_file_path}")
+                    video_file = new_file_path
+                    video_path = os.path.dirname(new_file_path)
+                    # Now rename the directory
+                    print("  对文件夹重新命名...")
+                    rename_directory_success, response = rename_folder(
+                        video_path, file_name)
+                    if rename_directory_success:
+                        video_path = response
+                        print_success(f"  视频文件夹成功重新命名为：{video_path}")
+                        # Re-check and find video file in renamed directory
+                        is_video_path, response = check_path_and_find_video(
+                            video_path)
+                        if is_video_path == 2:
+                            video_file = response
+                            print_success(f"  成功读取到视频文件：{video_file}")
+                        else:
+                            print_error(f"  读取视频文件失败：{response}")
+                            return False
+                    else:
+                        print_error(f"  重命名失败：{response}")
+                        return False
+                else:
+                    print_error(f"  移动文件失败: {new_file_path}")
+                    return False
+
+                # After folder rename, also rename the file inside
+                print("  开始对文件重新命名...")
+                rename_file_success, response = rename_file(
+                    video_file, file_name)
+                if rename_file_success:
+                    video_file = response
+                    print_success(f"  视频文件成功重新命名为：{video_file}")
+                else:
+                    print_error(f"  重命名失败：{response}")
+                    return False
+            else:
+                # Just rename the file without making directory
+                success, new_path = rename_file(video_file, file_name)
+                if success:
+                    new_path = os.path.normpath(new_path)
+                    print_success(f"重命名成功: {new_path}")
+                    video_file = new_path
+                    video_path = os.path.dirname(new_path)
+                else:
+                    print_error(f"重命名失败: {new_path}")
+                    return False
+
+        else:  # Directory (is_video_path == 2)
+            # First rename the folder
+            print("  对文件夹重新命名...")
+            rename_directory_success, response = rename_folder(
+                video_path, file_name)
+            if rename_directory_success:
+                video_path = response
+                print_success(f"  视频文件夹成功重新命名为：{video_path}")
+                # Re-check and find video file in renamed directory
+                is_video_path, response = check_path_and_find_video(video_path)
+                if is_video_path == 2:
+                    video_file = response
+                    print_success(f"  成功读取到视频文件：{video_file}")
+                else:
+                    print_error(f"  读取视频文件失败：{response}")
+                    return False
+            else:
+                print_error(f"  重命名失败：{response}")
+                return False
+
+            # Then rename the file inside the folder
+            print("  开始对文件重新命名...")
+            rename_file_success, response = rename_file(video_file, file_name)
+            if rename_file_success:
+                video_file = response
+                print_success(f"  视频文件成功重新命名为：{video_file}")
+            else:
+                print_error(f"  重命名失败：{response}")
+                return False
+
+        print_success("重命名全部成功")
+
+    # Create hard link if enabled
+    if create_hardlink:
+        print("正在创建硬链接...")
+        hardlink_success, hardlink_path = create_hard_link(video_path)
+        if hardlink_success:
+            print_success(f"硬链接创建成功: {hardlink_path}")
+        else:
+            print_error(f"硬链接创建失败: {hardlink_path}")
+
+    # Screenshots
+    screenshot_storage = get_settings('screenshot_storage_path')
+    screenshot_num = int(get_settings('screenshot_number') or 4)
+    screenshot_threshold = float(get_settings('screenshot_threshold') or 30.0)
+    screenshot_start_percentage = float(
+        get_settings('screenshot_start_percentage') or 0.10)
+    screenshot_end_percentage = float(
+        get_settings('screenshot_end_percentage') or 0.90)
+    do_get_thumbnail = get_settings('do_get_thumbnail') == 'True'
+    thumbnail_rows = int(get_settings('thumbnail_rows') or 3)
+    thumbnail_cols = int(get_settings('thumbnail_cols') or 3)
+    auto_upload_screenshot = get_settings('auto_upload_screenshot') == 'True'
+    delete_screenshot = get_settings('delete_screenshot') == 'True'
+
+    print("正在生成截图...")
+    pictures = []
+    success, screenshots = get_screenshot(video_file, screenshot_storage, screenshot_num,
+                                          screenshot_threshold, screenshot_start_percentage,
+                                          screenshot_end_percentage, screenshot_min_interval=0.01)
+    if success:
+        print_success(f"截图生成成功: {len(screenshots)} 张")
+        pictures = screenshots
+
+        # Generate thumbnail if enabled
+        if do_get_thumbnail:
+            print("正在生成缩略图...")
+            thumbnail_success, thumbnail_path = get_thumbnail(
+                video_file, screenshot_storage, thumbnail_rows, thumbnail_cols,
+                screenshot_start_percentage, screenshot_end_percentage
+            )
+            if thumbnail_success:
+                print_success(f"缩略图生成成功: {thumbnail_path}")
+                pictures.insert(0, thumbnail_path)
+            else:
+                print_warning(f"缩略图生成失败: {thumbnail_path}")
+
+        # Upload to picture bed if enabled
+        if auto_upload_screenshot and pictures:
+            picture_bed_api_url = get_settings('picture_bed_api_url')
+            picture_bed_api_token = get_settings('picture_bed_api_token')
+
+            print(f"正在上传 {len(pictures)} 张图片到图床...")
+            uploaded_urls = []
+
+            for idx, picture_path in enumerate(pictures, 1):
+                print(f"  上传第 {idx}/{len(pictures)} 张...")
+                upload_success, response = upload_picture(
+                    picture_bed_api_url, picture_bed_api_token, picture_path)
+
+                if upload_success:
+                    uploaded_urls.append(response)
+                    print_success(f"    上传成功")
+
+                    if delete_screenshot:
+                        try:
+                            os.remove(picture_path)
+                            print(f"    本地文件已删除: {picture_path}")
+                        except Exception as e:
+                            print_warning(f"    删除本地文件失败: {e}")
+                else:
+                    print_error(f"    上传失败: {response}")
+                    uploaded_urls.append(picture_path)
+
+            if uploaded_urls:
+                print_success(f"图片链接 ({len(uploaded_urls)} 张):")
+                for url in uploaded_urls:
+                    print(f"  {url}")
+        else:
+            if not auto_upload_screenshot:
+                print_success(f"本地截图路径:")
+                for pic in pictures:
+                    print(f"  {pic}")
+    else:
+        print_error(f"截图失败: {screenshots}")
+
+    # Torrent
+    torrent_storage = get_settings('torrent_storage_path')
+    print("正在制作种子...")
+    success, torrent_result = make_torrent(video_path, torrent_storage)
+    torrent_path = ""
+    if success:
+        print_success(f"种子制作成功: {torrent_result}")
+        torrent_path = torrent_result
+    else:
+        print_error(f"种子制作失败: {torrent_result}")
+
+    # Generate auto-feed link
+    print("\n正在生成 Auto-Feed 链接...")
+    category = '剧集'
+    torrent_url = ""  # Can be filled if torrent is uploaded somewhere
+
+    get_auto_feed_link_success, response = get_auto_feed_link(
+        main_title, f"{original_title} / {other_titles_str} | 类型：{categories} | 演员：{actors_str}",
+        description, media_info, file_name, team, source, category, torrent_url
+    )
+
+    if get_auto_feed_link_success:
+        auto_feed_link = response
+        print_success("Auto-Feed 链接已生成")
+
+        # Try to copy to clipboard
+        clipboard_success = False
+        try:
+            import pyperclip
+            pyperclip.copy(auto_feed_link)
+            clipboard_success = True
+            print_success("✓ 链接已自动复制到剪贴板")
+        except ImportError:
+            try:
+                if sys.platform == 'win32':
+                    import subprocess
+                    process = subprocess.Popen(
+                        ['clip'], stdin=subprocess.PIPE, shell=True)
+                    process.communicate(auto_feed_link.encode('utf-16le'))
+                    clipboard_success = True
+                    print_success("✓ 链接已自动复制到剪贴板")
+                elif sys.platform == 'darwin':
+                    import subprocess
+                    process = subprocess.Popen(
+                        ['pbcopy'], stdin=subprocess.PIPE)
+                    process.communicate(auto_feed_link.encode('utf-8'))
+                    clipboard_success = True
+                    print_success("✓ 链接已自动复制到剪贴板")
+            except Exception as e:
+                pass
+
+        # Save to file as backup
+        try:
+            temp_dir = os.path.join(os.path.dirname(
+                os.path.dirname(os.path.abspath(__file__))), 'temp')
+            os.makedirs(temp_dir, exist_ok=True)
+            link_file = os.path.join(temp_dir, 'auto_feed_link.txt')
+            with open(link_file, 'w', encoding='utf-8') as f:
+                f.write(auto_feed_link)
+            print_success(f"✓ 链接已保存到文件: {link_file}")
+        except Exception as e:
+            print_warning(f"保存链接文件失败: {e}")
+
+        if not clipboard_success:
+            print(f"\n{Colors.BOLD}Auto-Feed 链接:{Colors.END}")
+            print(f"{Colors.CYAN}{auto_feed_link}{Colors.END}")
+            print(
+                f"\n{Colors.YELLOW}提示: 链接已保存到 auto_feed_link.txt 文件{Colors.END}\n")
+        else:
+            print(f"\n{Colors.YELLOW}提示: 直接 Ctrl+V 粘贴到浏览器即可{Colors.END}\n")
+    else:
+        print_warning(f"Auto-Feed 链接生成失败: {response}")
+
+    print(f"\n{Colors.GREEN}{'='*50}")
+    print(f"  ✓ 处理完成! / Processing Complete!")
+    print(f"{'='*50}{Colors.END}\n")
+
+    return True
+
+
 def main():
     """Main entry point for interactive CLI."""
     print_header()
@@ -624,6 +1051,31 @@ def main():
         print_error("资源链接不能为空")
         return 1
     print()
+
+    # Get TV-specific inputs if TV series selected
+    season = 1
+    episodes_start = 1
+    if content_type == 'tv':
+        season_input = prompt("请输入季数 / Season", "1")
+        try:
+            season = int(season_input)
+            if season < 0:
+                print_error("季数不能为负数")
+                return 1
+        except ValueError:
+            print_error("季数必须是数字")
+            return 1
+
+        episodes_start_input = prompt("开始集数 / Start Episode", "1")
+        try:
+            episodes_start = int(episodes_start_input)
+            if episodes_start < 1:
+                print_error("开始集数必须大于0")
+                return 1
+        except ValueError:
+            print_error("开始集数必须是数字")
+            return 1
+        print()
 
     # Get video path
     video_path = prompt_path("请输入视频文件或文件夹路径")
@@ -716,8 +1168,7 @@ def main():
     if content_type == 'movie':
         success = process_movie(resource_url, video_path)
     elif content_type == 'tv':
-        print_warning("剧集处理暂未实现，请使用 GUI 模式")
-        success = False
+        success = process_tv(resource_url, video_path, season, episodes_start)
     else:
         print_warning("短剧处理暂未实现，请使用 GUI 模式")
         success = False
