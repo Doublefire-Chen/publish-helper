@@ -9,13 +9,10 @@ Usage:
 # isort: skip_file
 # NOTE: Import order is critical - stdlib must come before local imports
 # to avoid UnboundLocalError with os module
-from src.core.tool import (
-    check_path_and_find_video,
-    chinese_name_to_pinyin,
-    get_settings,
-    make_torrent,
-)
-from src.core.screenshot import get_screenshot, get_thumbnail
+from src.core.autofeed import get_auto_feed_link
+from src.core.mediainfo import get_media_info
+from src.core.picturebed import upload_picture
+from src.core.ptgen import get_pt_gen_description
 from src.core.rename import (
     create_hard_link,
     get_name_from_template,
@@ -25,9 +22,13 @@ from src.core.rename import (
     rename_file,
     rename_folder,
 )
-from src.core.ptgen import get_pt_gen_description
-from src.core.picturebed import upload_picture
-from src.core.mediainfo import get_media_info
+from src.core.screenshot import get_screenshot, get_thumbnail
+from src.core.tool import (
+    check_path_and_find_video,
+    chinese_name_to_pinyin,
+    get_settings,
+    make_torrent,
+)
 import os
 import sys
 import time
@@ -462,10 +463,32 @@ def process_movie(resource_url, video_path):
     torrent_storage = get_settings('torrent_storage_path')
     print("正在制作种子...")
     success, torrent_result = make_torrent(video_path, torrent_storage)
+    torrent_path = ""
     if success:
         print_success(f"种子制作成功: {torrent_result}")
+        torrent_path = torrent_result
     else:
         print_error(f"种子制作失败: {torrent_result}")
+
+    # Generate auto-feed link
+    print("\n正在生成 Auto-Feed 链接...")
+    category = '电影'
+    torrent_url = ""  # Can be filled if torrent is uploaded somewhere
+
+    get_auto_feed_link_success, response = get_auto_feed_link(
+        main_title, f"{original_title} / {other_titles_str} | 类型：{categories} | 演员：{actors_str}",
+        description, media_info, file_name, team, source, category, torrent_url
+    )
+
+    if get_auto_feed_link_success:
+        auto_feed_link = response
+        print_success("Auto-Feed 链接已生成")
+        print(f"\n{Colors.BOLD}Auto-Feed 链接:{Colors.END}")
+        print(f"{Colors.CYAN}{auto_feed_link}{Colors.END}")
+        print(
+            f"\n{Colors.YELLOW}请复制上方链接到浏览器中打开 / Copy the link above to browser{Colors.END}\n")
+    else:
+        print_warning(f"Auto-Feed 链接生成失败: {response}")
 
     print(f"\n{Colors.GREEN}{'='*50}")
     print(f"  ✓ 处理完成! / Processing Complete!")
