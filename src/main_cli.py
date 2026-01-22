@@ -74,8 +74,12 @@ class PathCompleterWithSlash(PathCompleter):
                     # On Windows, replace the trailing / with \
                     new_display = display_str[:-1] + '\\'
 
+                # If completion.text is empty (user already typed full directory name),
+                # we need to insert just the separator
+                new_text = completion.text + os.sep if completion.text else os.sep
+
                 yield Completion(
-                    text=completion.text + os.sep,  # Use os.sep for cross-platform compatibility
+                    text=new_text,  # Use os.sep for cross-platform compatibility
                     start_position=completion.start_position,
                     display=new_display,
                     display_meta=completion.display_meta,
