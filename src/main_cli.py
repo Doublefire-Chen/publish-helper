@@ -320,7 +320,7 @@ def process_movie(resource_url, video_path):
     # Execute additional operations
     print(f"\n{Colors.BOLD}执行后续操作...{Colors.END}")
 
-    # Rename
+    # Rename (matching GUI logic exactly)
     do_rename = get_settings('rename_file') == 'True'
     make_dir = get_settings('make_dir') == 'True'
     create_hardlink = get_settings('create_hard_link') == 'True'
@@ -337,39 +337,82 @@ def process_movie(resource_url, video_path):
                     print_success(f"  文件已移动到目录: {new_file_path}")
                     video_file = new_file_path
                     video_path = os.path.dirname(new_file_path)
-                    # Now rename the directory
-                    success, new_path = rename_folder(video_path, file_name)
+                    # Now rename the directory (same as GUI logic)
+                    print("  对文件夹重新命名...")
+                    rename_directory_success, response = rename_folder(
+                        video_path, file_name)
+                    if rename_directory_success:
+                        video_path = response
+                        print_success(f"  视频文件夹成功重新命名为：{video_path}")
+                        # Re-check and find video file in renamed directory
+                        is_video_path, response = check_path_and_find_video(
+                            video_path)
+                        if is_video_path == 2:
+                            video_file = response
+                            print_success(f"  成功读取到视频文件：{video_file}")
+                        else:
+                            print_error(f"  读取视频文件失败：{response}")
+                            return False
+                    else:
+                        print_error(f"  重命名失败：{response}")
+                        return False
                 else:
                     print_error(f"  移动文件失败: {new_file_path}")
-                    success = False
-            else:
-                success, new_path = rename_file(video_file, file_name)
+                    return False
 
-            if success:
-                # Normalize path for cross-platform compatibility
-                new_path = os.path.normpath(new_path)
-                print_success(f"重命名成功: {new_path}")
-                if make_dir:
-                    video_path = new_path
-                    _, video_file = check_path_and_find_video(video_path)
-                    video_file = os.path.normpath(video_file)
+                # After folder rename, also rename the file inside (GUI does both)
+                print("  开始对文件重新命名...")
+                rename_file_success, response = rename_file(
+                    video_file, file_name)
+                if rename_file_success:
+                    video_file = response
+                    print_success(f"  视频文件成功重新命名为：{video_file}")
                 else:
+                    print_error(f"  重命名失败：{response}")
+                    return False
+            else:
+                # Just rename the file without making directory
+                success, new_path = rename_file(video_file, file_name)
+                if success:
+                    new_path = os.path.normpath(new_path)
+                    print_success(f"重命名成功: {new_path}")
                     video_file = new_path
                     video_path = os.path.dirname(new_path)
+                else:
+                    print_error(f"重命名失败: {new_path}")
+                    return False
+
+        else:  # Directory (is_video_path == 2)
+            # First rename the folder
+            print("  对文件夹重新命名...")
+            rename_directory_success, response = rename_folder(
+                video_path, file_name)
+            if rename_directory_success:
+                video_path = response
+                print_success(f"  视频文件夹成功重新命名为：{video_path}")
+                # Re-check and find video file in renamed directory
+                is_video_path, response = check_path_and_find_video(video_path)
+                if is_video_path == 2:
+                    video_file = response
+                    print_success(f"  成功读取到视频文件：{video_file}")
+                else:
+                    print_error(f"  读取视频文件失败：{response}")
+                    return False
             else:
-                print_error(f"重命名失败: {new_path}")
-        else:  # Directory
-            success, new_path = rename_folder(video_path, file_name)
-            if success:
-                # Normalize path for cross-platform compatibility
-                new_path = os.path.normpath(new_path)
-                print_success(f"重命名成功: {new_path}")
-                video_path = new_path
-                # Re-find the video file in the renamed directory
-                _, video_file = check_path_and_find_video(video_path)
-                video_file = os.path.normpath(video_file)
+                print_error(f"  重命名失败：{response}")
+                return False
+
+            # Then rename the file inside the folder (GUI does both)
+            print("  开始对文件重新命名...")
+            rename_file_success, response = rename_file(video_file, file_name)
+            if rename_file_success:
+                video_file = response
+                print_success(f"  视频文件成功重新命名为：{video_file}")
             else:
-                print_error(f"重命名失败: {new_path}")
+                print_error(f"  重命名失败：{response}")
+                return False
+
+        print_success("重命名全部成功")
 
     # Create hard link if enabled
     if create_hardlink:
