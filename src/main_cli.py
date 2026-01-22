@@ -97,8 +97,15 @@ def process_movie(resource_url, video_path):
         print_error(f"获取 PT-Gen 失败: {response}")
         return False
     
-    description = response
+    # Response is a tuple (description_text, response_dict)
+    # Extract just the description text for parsing
+    if isinstance(response, tuple):
+        description = response[0]  # First element is the formatted description
+    else:
+        description = response
+    
     print_success("PT-Gen 信息获取成功")
+
     
     # Step 2: Parse PT-Gen info
     print_step(2, total_steps, "解析 PT-Gen 信息...")
