@@ -662,6 +662,15 @@ def process_movie(resource_url, video_path):
                 print_success(f"图片链接 ({len(uploaded_urls)} 张):")
                 for url in uploaded_urls:
                     print(f"  {url}")
+
+                # Append uploaded picture URLs to description if setting enabled
+                paste_screenshot_url = get_settings('paste_screenshot_url') == 'True'
+                if paste_screenshot_url:
+                    for url in uploaded_urls:
+                        # Only append if it's a valid BBCode URL (not local path)
+                        if url.startswith('[img]'):
+                            description += '\n' + url
+                    print_success("截图链接已添加到简介")
         else:
             if not auto_upload_screenshot:
                 print_success(f"本地截图路径:")
@@ -1092,6 +1101,15 @@ def process_tv(resource_url, video_path, season, episodes_start):
                 print_success(f"图片链接 ({len(uploaded_urls)} 张):")
                 for url in uploaded_urls:
                     print(f"  {url}")
+
+                # Append uploaded picture URLs to description if setting enabled
+                paste_screenshot_url = get_settings('paste_screenshot_url') == 'True'
+                if paste_screenshot_url:
+                    for url in uploaded_urls:
+                        # Only append if it's a valid BBCode URL (not local path)
+                        if url.startswith('[img]'):
+                            description += '\n' + url
+                    print_success("截图链接已添加到简介")
         else:
             if not auto_upload_screenshot:
                 print_success(f"本地截图路径:")
@@ -1495,6 +1513,15 @@ def process_playlet(original_title, year, area, categories, language, playlet_so
                 print_success(f"图片链接 ({len(uploaded_urls)} 张):")
                 for url in uploaded_urls:
                     print(f"  {url}")
+
+                # Append uploaded picture URLs to description if setting enabled
+                paste_screenshot_url = get_settings('paste_screenshot_url') == 'True'
+                if paste_screenshot_url:
+                    for url in uploaded_urls:
+                        # Only append if it's a valid BBCode URL (not local path)
+                        if url.startswith('[img]'):
+                            description += '\n' + url
+                    print_success("截图链接已添加到简介")
         else:
             if not auto_upload_screenshot:
                 print_success(f"本地截图路径:")
