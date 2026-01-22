@@ -61,11 +61,17 @@ class PathCompleterWithSlash(PathCompleter):
                 completion.display, str) and completion.display.endswith('/')
 
             if is_directory:
-                # Add os.sep to the completion text for directories
+                # Add os.sep to both completion text and display for directories
+                # On Windows, also update display to show backslash instead of forward slash
+                new_display = completion.display
+                if os.sep == '\\' and isinstance(completion.display, str):
+                    # On Windows, replace the trailing / with \
+                    new_display = completion.display[:-1] + '\\'
+
                 yield Completion(
                     text=completion.text + os.sep,  # Use os.sep for cross-platform compatibility
                     start_position=completion.start_position,
-                    display=completion.display,
+                    display=new_display,
                     display_meta=completion.display_meta,
                     style=completion.style,
                     selected_style=completion.selected_style,
