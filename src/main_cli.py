@@ -48,13 +48,18 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
 class PathCompleterWithSlash(PathCompleter):
-    """Custom PathCompleter that adds '/' or '\\' to directory completions."""
+    """Custom PathCompleter that adds '/' or '\\' to directory completions when unambiguous."""
 
     def get_completions(
         self, document: Document, complete_event: CompleteEvent
     ) -> Iterable[Completion]:
-        """Generate completions with trailing slash for directories."""
-        for completion in super().get_completions(document, complete_event):
+        """Generate completions with trailing slash for directories when there's only one match."""
+        # Collect all completions first to check count
+        completions = list(super().get_completions(document, complete_event))
+
+        # Only add separator if there's exactly one completion (unambiguous)
+        if len(completions) == 1:
+            completion = completions[0]
             # PathCompleter adds "/" to display for directories but not to completion.text
             # Check if display ends with "/" to identify directories
             is_directory = isinstance(
@@ -78,6 +83,9 @@ class PathCompleterWithSlash(PathCompleter):
                 )
             else:
                 yield completion
+        else:
+            # Multiple completions: yield them as-is for cycling
+            yield from completions
 
 
 # ANSI color codes for terminal output
