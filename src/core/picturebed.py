@@ -48,13 +48,20 @@ def lsky_pro_picture_bed(api_url, api_token, frame_path):
     data = {}
     print('值已经获取')
 
+    # Debug: print request details
+    print(f'[DEBUG] Request URL: {url}')
+    print(f'[DEBUG] Headers: {headers}')
+    print(f'[DEBUG] File path: {frame_path}')
+    print(f'[DEBUG] File size: {os.path.getsize(frame_path)} bytes')
+
     try:
         # 发送POST请求
         print('开始发送上传图床的请求')
         res = requests.post(url, headers=headers, data=data, files=files)
         print('已成功发送上传图床的请求')
         print(f'响应状态码：{res.status_code}')
-        print(f'响应内容：{res.text[:500]}')  # Print first 500 chars to avoid overwhelming output
+        print(f'[DEBUG] Response headers: {dict(res.headers)}')
+        print(f'响应内容：{res.text[:500] if res.text else "(empty)"}')  # Print first 500 chars to avoid overwhelming output
     except requests.RequestException as e:
         print(f'请求过程中出现错误：{str(e)}')
         return False, f'请求过程中出现错误：{str(e)}'
