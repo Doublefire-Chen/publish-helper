@@ -185,6 +185,15 @@ def process_movie(resource_url, video_path):
     """Process a movie with the one-key workflow."""
     total_steps = 6
 
+    # Collect all user choices FIRST before any API calls
+    print(f"\n{Colors.BOLD}请完成以下选择 / Please make your selections:{Colors.END}\n")
+
+    # Get Source and Team selections upfront
+    source = select_from_combo_box("来源 Source", "source")
+    team = select_from_combo_box("制作组 Team", "team")
+
+    print(f"\n{Colors.GREEN}✓ 所有选择已完成，开始自动处理...{Colors.END}\n")
+
     # Step 1: Get PT-Gen description
     print_step(1, total_steps, "获取 PT-Gen 信息...")
     pt_gen_api_url = get_settings('pt_gen_api_url')
@@ -266,10 +275,7 @@ def process_movie(resource_url, video_path):
     # Step 5: Generate file name
     print_step(5, total_steps, "生成文件名...")
 
-    # Interactive selection for source and team
-    source = select_from_combo_box("来源 Source", "source")
-    team = select_from_combo_box("制作组 Team", "team")
-
+    # Use source and team from initial selections
     other_titles_str = ' / '.join(other_names) if other_names else ''
     actors_str = ' / '.join(actors) if actors else ''
 
