@@ -62,16 +62,17 @@ class PathCompleterWithSlash(PathCompleter):
             completion = completions[0]
             # PathCompleter adds "/" to display for directories but not to completion.text
             # Check if display ends with "/" to identify directories
-            is_directory = isinstance(
-                completion.display, str) and completion.display.endswith('/')
+            display_str = completion.display if isinstance(
+                completion.display, str) else str(completion.display)
+            is_directory = display_str.endswith('/')
 
             if is_directory:
                 # Add os.sep to both completion text and display for directories
                 # On Windows, also update display to show backslash instead of forward slash
-                new_display = completion.display
-                if os.sep == '\\' and isinstance(completion.display, str):
+                new_display = display_str
+                if os.sep == '\\':
                     # On Windows, replace the trailing / with \
-                    new_display = completion.display[:-1] + '\\'
+                    new_display = display_str[:-1] + '\\'
 
                 yield Completion(
                     text=completion.text + os.sep,  # Use os.sep for cross-platform compatibility
@@ -82,10 +83,12 @@ class PathCompleterWithSlash(PathCompleter):
                     selected_style=completion.selected_style,
                 )
             else:
+                # Single file, yield as-is
                 yield completion
         else:
-            # Multiple completions: yield them as-is for cycling
-            yield from completions
+            # Multiple completions: yield them all as-is for cycling
+            for completion in completions:
+                yield completion
 
 
 # ANSI color codes for terminal output
