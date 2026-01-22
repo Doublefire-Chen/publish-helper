@@ -9,6 +9,9 @@ Usage:
 # isort: skip_file
 # NOTE: Import order is critical - stdlib must come before local imports
 # to avoid UnboundLocalError with os module
+from prompt_toolkit.shortcuts import CompleteStyle
+from prompt_toolkit.completion import PathCompleter
+from prompt_toolkit import prompt as pt_prompt
 from src.core.autofeed import get_auto_feed_link
 from src.core.mediainfo import get_media_info
 from src.core.picturebed import upload_picture
@@ -35,6 +38,9 @@ import time
 
 # Add project root to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+
+# Import prompt_toolkit for enhanced path completion
 
 
 # ANSI color codes for terminal output
@@ -75,7 +81,9 @@ def print_settings_summary():
     print(
         f"  文件管理: 重命名={_status(rename_file)} | 创建目录={_status(make_dir)} | 硬链接={_status(create_hardlink)}")
     print(f"  截图设置: 数量={screenshot_num} | 缩略图={_status(do_thumbnail)} | 自动上传={_status(auto_upload)} | 上传后删除={_status(delete_after_upload)}")
-    print()
+
+    # Show path completion hint
+    print(f"\n  {Colors.GREEN}✓ 路径自动补全已启用 (按 Tab 键补全路径){Colors.END}")
 
 
 def _status(enabled):
@@ -112,13 +120,34 @@ def prompt(message, default=None):
     return input(f"{Colors.BOLD}{message}{Colors.END}: ").strip()
 
 
-def select_content_type():
-    """Prompt user to select content type."""
-    print(f"{Colors.BOLD}请选择内容类型 / Select content type:{Colors.END}")
-    print("  [1] 电影 Movie")
-    print("  [2] 剧集 TV Series")
-    print("  [3] 短剧 Playlet")
-    print()
+def prompt_path(message, default=None):
+    """Prompt for file path with tab completion support using prompt_toolkit."""
+    # Use prompt_toolkit with PathCompleter for tab completion
+    completer = PathCompleter(expanduser=True)
+
+    if default:
+        result = pt_prompt(
+            f"{message} [{default}]: ",
+            completer=completer,
+            complete_style=CompleteStyle.MULTI_COLUMN,
+            default=""
+        )
+        return result.strip() if result.strip() else default
+    else:
+        result = pt_prompt(
+            f"{message}: ",
+            completer=completer,
+            complete_style=CompleteStyle.MULTI_COLUMN
+        )
+        return result.strip()
+
+
+def prompt_media_type():
+    """Prompt user for media type."""
+    print(f"\n{Colors.BOLD}选择媒体类型 / Select Media Type:{Colors.END}")
+    print("  1. 电影 / Movie")
+    print("  2. 电视剧 / TV Series")
+    print("  3. 短剧 / Playlet")
 
     while True:
         choice = prompt("选择 / Choice", "1")
@@ -133,8 +162,8 @@ def select_from_combo_box(label, combo_data_name):
     User can select by number or enter custom value.
 
     Args:
-        label: Display label (e.g., "来源 Source")
-        combo_data_name: Name of combo box data ('source', 'team', etc.)
+        label: Display label(e.g., "来源 Source")
+        combo_data_name: Name of combo box data('source', 'team', etc.)
 
     Returns:
         Selected or custom value
@@ -586,7 +615,7 @@ def main():
     print_settings_summary()
 
     # Select content type
-    content_type = select_content_type()
+    content_type = prompt_media_type()
     print()
 
     # Get resource URL
@@ -597,7 +626,7 @@ def main():
     print()
 
     # Get video path
-    video_path = prompt("请输入视频文件或文件夹路径")
+    video_path = prompt_path("请输入视频文件或文件夹路径")
     if not video_path:
         print_error("视频路径不能为空")
         return 1
