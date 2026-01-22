@@ -207,6 +207,7 @@ def prompt_path(message, default=None):
             f"{message} [{default}]: ",
             completer=completer,
             complete_style=CompleteStyle.MULTI_COLUMN,
+            complete_while_typing=True,
             default=""
         )
         return result.strip() if result.strip() else default
@@ -214,7 +215,8 @@ def prompt_path(message, default=None):
         result = pt_prompt(
             f"{message}: ",
             completer=completer,
-            complete_style=CompleteStyle.MULTI_COLUMN
+            complete_style=CompleteStyle.MULTI_COLUMN,
+            complete_while_typing=True
         )
         return result.strip()
 
