@@ -13,6 +13,7 @@ from prompt_toolkit.shortcuts import CompleteStyle
 from prompt_toolkit.completion import PathCompleter, Completer, Completion, CompleteEvent
 from prompt_toolkit.document import Document
 from prompt_toolkit import prompt as pt_prompt
+from prompt_toolkit.key_binding import KeyBindings
 from typing import Iterable
 from src.core.autofeed import get_auto_feed_link
 from src.core.mediainfo import get_media_info
@@ -202,12 +203,35 @@ def prompt_path(message, default=None):
     # Use custom PathCompleter that adds slash to directories
     completer = PathCompleterWithSlash(expanduser=True)
 
+    # Custom key bindings to refresh completions after accepting a directory
+    kb = KeyBindings()
+
+    @kb.add('tab')
+    def _(event):
+        """Handle Tab: accept completion and refresh if it's a directory."""
+        b = event.app.current_buffer
+        if b.complete_state:
+            # There's a completion menu open - get and apply the current completion
+            completion = b.complete_state.current_completion
+            if completion:
+                b.apply_completion(completion)
+            else:
+                b.complete_state = None
+            # Check if text ends with path separator (directory was completed)
+            if b.text.endswith(os.sep) or b.text.endswith('/'):
+                # Trigger new completion to show directory contents
+                b.start_completion(select_first=False)
+        else:
+            # No completion menu - start completion
+            b.start_completion(select_first=False)
+
     if default:
         result = pt_prompt(
             f"{message} [{default}]: ",
             completer=completer,
             complete_style=CompleteStyle.MULTI_COLUMN,
             complete_while_typing=True,
+            key_bindings=kb,
             default=""
         )
         return result.strip() if result.strip() else default
@@ -216,7 +240,8 @@ def prompt_path(message, default=None):
             f"{message}: ",
             completer=completer,
             complete_style=CompleteStyle.MULTI_COLUMN,
-            complete_while_typing=True
+            complete_while_typing=True,
+            key_bindings=kb
         )
         return result.strip()
 
