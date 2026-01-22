@@ -3,7 +3,7 @@ Toast notification widget for displaying floating messages to users.
 """
 from PyQt6.QtCore import Qt, QTimer, QPropertyAnimation, QEasingCurve, QRect
 from PyQt6.QtGui import QFont, QPainter, QColor, QPainterPath
-from PyQt6.QtWidgets import QWidget, QLabel, QHBoxLayout, QPushButton, QGraphicsOpacityEffect
+from PyQt6.QtWidgets import QWidget, QLabel, QHBoxLayout, QGraphicsOpacityEffect
 
 
 class ToastNotification(QWidget):
@@ -12,12 +12,12 @@ class ToastNotification(QWidget):
     # Class variable to track all active toasts for stacking
     _active_toasts = []
     
-    # Toast types with their colors
+    # Toast types with their colors and icons
     TYPES = {
-        'error': {'bg': '#dc3545', 'icon': '✕'},
-        'warning': {'bg': '#fd7e14', 'icon': '⚠'},
-        'info': {'bg': '#0d6efd', 'icon': 'ℹ'},
-        'success': {'bg': '#198754', 'icon': '✓'},
+        'error': {'bg': '#dc3545', 'icon': '⚠'},      # Warning triangle for error
+        'warning': {'bg': '#fd7e14', 'icon': '⚡'},    # Lightning for warning
+        'info': {'bg': '#0d6efd', 'icon': 'ℹ'},       # Info icon
+        'success': {'bg': '#198754', 'icon': '✓'},    # Checkmark for success
     }
     
     def __init__(self, parent, message, toast_type='error', duration=5000):
@@ -40,47 +40,35 @@ class ToastNotification(QWidget):
         self.bg_color = QColor(type_config['bg'])
         icon = type_config['icon']
         
-        # Setup widget as overlay (no special window flags - just a child widget)
+        # Setup widget as overlay
         self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
         self.setAutoFillBackground(False)
+        self.setCursor(Qt.CursorShape.PointingHandCursor)  # Show clickable cursor
         
         # Create layout
         layout = QHBoxLayout(self)
-        layout.setContentsMargins(16, 12, 16, 12)
-        layout.setSpacing(10)
+        layout.setContentsMargins(20, 14, 20, 14)
+        layout.setSpacing(12)
         
         # Icon label
         icon_label = QLabel(icon)
-        icon_label.setFont(QFont('Arial', 14))
+        icon_label.setFont(QFont('Arial', 18))
         icon_label.setStyleSheet('color: white; background: transparent;')
         layout.addWidget(icon_label)
         
         # Message label
         self.message_label = QLabel(message)
-        self.message_label.setFont(QFont('Microsoft YaHei', 10))
+        self.message_label.setFont(QFont('Microsoft YaHei', 11))
         self.message_label.setStyleSheet('color: white; background: transparent;')
         self.message_label.setWordWrap(True)
-        self.message_label.setMaximumWidth(350)
+        self.message_label.setMaximumWidth(400)
         layout.addWidget(self.message_label, 1)
         
-        # Close button
-        close_btn = QPushButton('×')
-        close_btn.setFixedSize(24, 24)
-        close_btn.setFont(QFont('Arial', 14, QFont.Weight.Bold))
-        close_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        close_btn.setStyleSheet('''
-            QPushButton {
-                color: white;
-                background: transparent;
-                border: none;
-                border-radius: 12px;
-            }
-            QPushButton:hover {
-                background: rgba(255, 255, 255, 0.2);
-            }
-        ''')
-        close_btn.clicked.connect(self.close)
-        layout.addWidget(close_btn)
+        # Hint label (click to dismiss)
+        hint_label = QLabel('点击关闭')
+        hint_label.setFont(QFont('Microsoft YaHei', 9))
+        hint_label.setStyleSheet('color: rgba(255, 255, 255, 0.7); background: transparent;')
+        layout.addWidget(hint_label)
         
         # Opacity effect for fade animation
         self.opacity_effect = QGraphicsOpacityEffect(self)
@@ -110,13 +98,19 @@ class ToastNotification(QWidget):
             self.dismiss_timer = None
     
     def paintEvent(self, event):
-        """Draw rounded rectangle background."""
+        """Draw rounded rectangle background with shadow effect."""
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         
-        # Draw rounded rectangle
+        # Draw shadow (slightly offset darker rectangle)
+        shadow_path = QPainterPath()
+        shadow_rect = QRect(2, 2, self.width() - 2, self.height() - 2).toRectF()
+        shadow_path.addRoundedRect(shadow_rect, 10, 10)
+        painter.fillPath(shadow_path, QColor(0, 0, 0, 40))
+        
+        # Draw main rounded rectangle
         path = QPainterPath()
-        path.addRoundedRect(QRect(0, 0, self.width(), self.height()).toRectF(), 8, 8)
+        path.addRoundedRect(QRect(0, 0, self.width() - 2, self.height() - 2).toRectF(), 10, 10)
         painter.fillPath(path, self.bg_color)
         
         super().paintEvent(event)
@@ -129,7 +123,7 @@ class ToastNotification(QWidget):
         # Adjust size first
         self.adjustSize()
         
-        # Calculate position (top-right corner, stacked)
+        # Calculate position (center of parent window)
         self._update_position()
         
         # Show widget - raise it above other widgets
@@ -144,24 +138,25 @@ class ToastNotification(QWidget):
             self.dismiss_timer.start(self.duration)
     
     def _update_position(self):
-        """Update position based on parent and other active toasts."""
+        """Update position to center of parent window, stacked vertically."""
         if not self.parent():
             return
         
         parent_rect = self.parent().rect()
-        margin = 20
         
-        # Calculate vertical offset based on other toasts
-        y_offset = margin
+        # Calculate vertical offset based on other toasts (for stacking)
+        y_offset = 0
         for toast in ToastNotification._active_toasts:
             if toast is self:
                 break
             if toast.isVisible():
                 y_offset += toast.height() + 10
         
-        # Position at top-right
-        x = parent_rect.width() - self.width() - margin
-        y = y_offset
+        # Center horizontally
+        x = (parent_rect.width() - self.width()) // 2
+        
+        # Position near top-center, with offset for stacking
+        y = 60 + y_offset  # 60px from top
         
         self.move(x, y)
     
@@ -207,4 +202,3 @@ def show_toast(parent, message, toast_type='error', duration=5000):
     toast = ToastNotification(parent, message, toast_type, duration)
     toast.show_toast()
     return toast
-
