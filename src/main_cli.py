@@ -119,8 +119,6 @@ class PathCompleterWithSlash(PathCompleter):
                     )
                 else:
                     yield completion
-                else:
-                    yield completion
 
 
 # ANSI color codes for terminal output
