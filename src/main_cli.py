@@ -526,10 +526,56 @@ def process_movie(resource_url, video_path):
     if get_auto_feed_link_success:
         auto_feed_link = response
         print_success("Auto-Feed 链接已生成")
-        print(f"\n{Colors.BOLD}Auto-Feed 链接:{Colors.END}")
-        print(f"{Colors.CYAN}{auto_feed_link}{Colors.END}")
-        print(
-            f"\n{Colors.YELLOW}请复制上方链接到浏览器中打开 / Copy the link above to browser{Colors.END}\n")
+
+        # Try to copy to clipboard
+        clipboard_success = False
+        try:
+            import pyperclip
+            pyperclip.copy(auto_feed_link)
+            clipboard_success = True
+            print_success("✓ 链接已自动复制到剪贴板")
+        except ImportError:
+            # pyperclip not available, try platform-specific methods
+            try:
+                if sys.platform == 'win32':
+                    # Windows: use built-in clip command
+                    import subprocess
+                    process = subprocess.Popen(
+                        ['clip'], stdin=subprocess.PIPE, shell=True)
+                    process.communicate(auto_feed_link.encode('utf-16le'))
+                    clipboard_success = True
+                    print_success("✓ 链接已自动复制到剪贴板")
+                elif sys.platform == 'darwin':
+                    # macOS: use pbcopy
+                    import subprocess
+                    process = subprocess.Popen(
+                        ['pbcopy'], stdin=subprocess.PIPE)
+                    process.communicate(auto_feed_link.encode('utf-8'))
+                    clipboard_success = True
+                    print_success("✓ 链接已自动复制到剪贴板")
+            except Exception as e:
+                pass
+
+        # Save to file as backup in temp folder (avoid git tracking)
+        try:
+            # Get project root temp folder
+            temp_dir = os.path.join(os.path.dirname(
+                os.path.dirname(os.path.abspath(__file__))), 'temp')
+            os.makedirs(temp_dir, exist_ok=True)
+            link_file = os.path.join(temp_dir, 'auto_feed_link.txt')
+            with open(link_file, 'w', encoding='utf-8') as f:
+                f.write(auto_feed_link)
+            print_success(f"✓ 链接已保存到文件: {link_file}")
+        except Exception as e:
+            print_warning(f"保存链接文件失败: {e}")
+
+        if not clipboard_success:
+            print(f"\n{Colors.BOLD}Auto-Feed 链接:{Colors.END}")
+            print(f"{Colors.CYAN}{auto_feed_link}{Colors.END}")
+            print(
+                f"\n{Colors.YELLOW}提示: 链接已保存到 auto_feed_link.txt 文件{Colors.END}\n")
+        else:
+            print(f"\n{Colors.YELLOW}提示: 直接 Ctrl+V 粘贴到浏览器即可{Colors.END}\n")
     else:
         print_warning(f"Auto-Feed 链接生成失败: {response}")
 
