@@ -437,7 +437,6 @@ def process_movie(resource_url, video_path):
                     # Delete local screenshot if setting enabled
                     if delete_screenshot:
                         try:
-                            import os
                             os.remove(picture_path)
                             print(f"    本地文件已删除: {picture_path}")
                         except Exception as e:
