@@ -24,6 +24,7 @@ from src.core.tool import update_settings, get_settings, check_path_and_find_vid
     get_combo_box_data, validate_and_convert_to_int
 from src.gui.ui.mainwindow import Ui_Mainwindow
 from src.gui.ui.settings import Ui_Settings
+from src.gui.ui.toast import show_toast
 from src.gui.ui_tools import get_video_file_path, get_folder_path, get_picture_file_path
 
 get_name_movie_success = False
@@ -210,6 +211,7 @@ class mainwindow(QMainWindow, Ui_Mainwindow):
         else:
             print('重命名失败，一键启动已终止')
             self.debugBrowserMovie.append('重命名失败，一键启动已终止')
+            show_toast(self, '重命名失败，一键启动已终止', 'error', 6000)
 
     def auto_feed_button_movie_clicked(self):
         main_title, second_title, description, media_info, file_name, team, source = '', '', '', '', '', '', ''
@@ -900,6 +902,7 @@ class mainwindow(QMainWindow, Ui_Mainwindow):
         else:
             print('重命名失败，一键启动已终止')
             self.debugBrowserTV.append('重命名失败，一键启动已终止')
+            show_toast(self, '重命名失败，一键启动已终止', 'error', 6000)
 
     def auto_feed_button_tv_clicked(self):
         main_title, second_title, description, media_info, file_name, team, source = '', '', '', '', '', '', ''
