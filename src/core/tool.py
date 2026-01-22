@@ -511,7 +511,7 @@ def check_path_and_find_video(path):
 
     # 检查路径是否是一个文件
     if os.path.isfile(path):
-        if any(path.endswith(ext) for ext in video_extensions):
+        if any(path.lower().endswith(ext) for ext in video_extensions):
             return 1, path  # 是文件且符合视频类型
         print(f'路径下获取到文件{path}，但该文件不符合视频类型')
         return 0, f'路径下获取到文件{path}，但该文件不符合视频类型'  # 是文件，但不符合视频类型
@@ -519,7 +519,7 @@ def check_path_and_find_video(path):
     # 检查路径是否是一个文件夹
     elif os.path.isdir(path):
         for file in os.listdir(path):
-            if any(file.endswith(ext) for ext in video_extensions):
+            if any(file.lower().endswith(ext) for ext in video_extensions):
                 print(path + file)
                 return 2, path + '/' + file  # 在文件夹中找到符合类型的视频文件
         print('文件夹中没有符合类型的视频文件')
@@ -667,12 +667,11 @@ def get_video_files(folder_path):
         # 初始化一个空列表来存储文件路径
         video_files = []
 
-        # 遍历每个扩展名，并将匹配的文件添加到列表中
-        for extension in video_extensions:
-            # Glob模式匹配文件
-            pattern = os.path.join(folder_path, '*' + extension)
-            # 查找匹配的文件并扩展列表
-            video_files.extend(glob.glob(pattern))
+        # 遍历文件夹中的所有文件
+        for file in os.listdir(folder_path):
+            # 检查文件扩展名（不区分大小写）
+            if any(file.lower().endswith(ext) for ext in video_extensions):
+                video_files.append(os.path.join(folder_path, file))
 
         # 使用自定义的natural_keys函数进行排序
         video_files.sort(key=natural_keys)
