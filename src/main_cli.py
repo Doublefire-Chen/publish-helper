@@ -127,6 +127,29 @@ class PathCompleterWithSlash(PathCompleter):
                     yield completion
 
 
+def getch():
+    """Read a single character from stdin without waiting for Enter."""
+    if sys.platform == 'win32':
+        import msvcrt
+        ch = msvcrt.getch()
+        # Handle special characters (arrows, etc.) that return two bytes
+        if ch in (b'\x00', b'\xe0'):
+            msvcrt.getch()  # Consume second byte
+            return None
+        return ch.decode('utf-8', errors='ignore')
+    else:
+        import tty
+        import termios
+        fd = sys.stdin.fileno()
+        old_settings = termios.tcgetattr(fd)
+        try:
+            tty.setraw(fd)
+            ch = sys.stdin.read(1)
+        finally:
+            termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+        return ch
+
+
 # ANSI color codes for terminal output
 class Colors:
     HEADER = '\033[95m'
@@ -266,7 +289,11 @@ def prompt_media_type():
     print("  0/q. 退出 / Quit")
 
     while True:
-        choice = prompt("选择 / Choice", "1")
+        print(f"\n选择 / Choice: ", end='', flush=True)
+        choice = getch()
+        if choice is None:
+            continue
+        print(choice)  # Echo the character
         if choice in ['1', '2', '3']:
             return {'1': 'movie', '2': 'tv', '3': 'playlet'}[choice]
         if choice in ['0', 'q', 'Q']:
