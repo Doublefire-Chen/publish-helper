@@ -448,8 +448,10 @@ def process_movie(resource_url, video_path):
     # Extract just the description text for parsing
     if isinstance(response, tuple):
         description = response[0]  # First element is the formatted description
+        pt_gen_data = response[1]  # Second element is the full API response
     else:
         description = response
+        pt_gen_data = {}
 
     print_success("PT-Gen 信息获取成功")
 
@@ -464,6 +466,16 @@ def process_movie(resource_url, video_path):
     except Exception as e:
         print_error(f"解析 PT-Gen 失败: {e}")
         return False
+
+    # Fallback: use chinese_title from API response if original_title is empty
+    if not original_title and pt_gen_data.get('chinese_title'):
+        original_title = pt_gen_data['chinese_title']
+        print(f"  使用API返回的中文标题: {original_title}")
+
+    # Fallback: use foreign_title from API response if english_title is empty
+    if not english_title and pt_gen_data.get('foreign_title'):
+        english_title = pt_gen_data['foreign_title']
+        print(f"  使用API返回的外文标题: {english_title}")
 
     if not year:
         print_error("未能获取年份信息")
@@ -858,8 +870,10 @@ def process_tv(resource_url, video_path, season, episodes_start):
     # Response is a tuple (description_text, response_dict)
     if isinstance(response, tuple):
         description = response[0]  # First element is the formatted description
+        pt_gen_data = response[1]  # Second element is the full API response
     else:
         description = response
+        pt_gen_data = {}
 
     print_success("PT-Gen 信息获取成功")
 
@@ -874,6 +888,16 @@ def process_tv(resource_url, video_path, season, episodes_start):
     except Exception as e:
         print_error(f"解析 PT-Gen 失败: {e}")
         return False
+
+    # Fallback: use chinese_title from API response if original_title is empty
+    if not original_title and pt_gen_data.get('chinese_title'):
+        original_title = pt_gen_data['chinese_title']
+        print(f"  使用API返回的中文标题: {original_title}")
+
+    # Fallback: use foreign_title from API response if english_title is empty
+    if not english_title and pt_gen_data.get('foreign_title'):
+        english_title = pt_gen_data['foreign_title']
+        print(f"  使用API返回的外文标题: {english_title}")
 
     if not year:
         print_error("未能获取年份信息")

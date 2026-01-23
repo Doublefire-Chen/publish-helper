@@ -33,6 +33,8 @@ def get_pt_gen_description(pt_gen_api_url, resource_url):
             print(f'[DEBUG] PT-Gen API URL: {pt_gen_api_url}')
             print(f'[DEBUG] Resource URL: {resource_url}')
             print(f'[DEBUG] Response keys: {list(data.keys())}')
+            print(f'[DEBUG] chinese_title: {data.get("chinese_title", "N/A")}')
+            print(f'[DEBUG] foreign_title: {data.get("foreign_title", "N/A")}')
         except ValueError:
             print('响应不是有效的JSON格式')
             return False, 'PT-Gen接口响应不是有效的JSON格式，请检查PT-Gen接口是否正常'
