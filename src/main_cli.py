@@ -953,7 +953,7 @@ def process_tv(resource_url, video_path, season, episodes_start):
     actors_str = ' / '.join(actors) if actors else ''
 
     file_name = get_name_from_template(
-        english_title, original_title, season_str, '', year,
+        english_title, original_title, season_str, '{集数}', year,
         video_format, source, video_codec, bit_depth, hdr_format,
         frame_rate, audio_codec, channels, audio_num, team,
         other_titles_str, season_number, total_episodes, '',
@@ -1001,8 +1001,10 @@ def process_tv(resource_url, video_path, season, episodes_start):
             # If make_dir is enabled, move file into a folder first
             if make_dir:
                 print("  创建目录并移动文件...")
+                # For folder name, remove episode placeholder
+                folder_name = file_name.replace('E{集数}', '').replace('{集数}', '')
                 move_success, new_file_path = move_file_to_folder(
-                    video_file, file_name)
+                    video_file, folder_name)
                 if move_success:
                     print_success(f"  文件已移动到目录: {new_file_path}")
                     video_file = new_file_path
@@ -1010,7 +1012,7 @@ def process_tv(resource_url, video_path, season, episodes_start):
                     # Now rename the directory
                     print("  对文件夹重新命名...")
                     rename_directory_success, response = rename_folder(
-                        video_path, file_name)
+                        video_path, folder_name)
                     if rename_directory_success:
                         video_path = response
                         print_success(f"  视频文件夹成功重新命名为：{video_path}")
@@ -1032,8 +1034,13 @@ def process_tv(resource_url, video_path, season, episodes_start):
 
                 # After folder rename, also rename the file inside
                 print("  开始对文件重新命名...")
+                # For single file, replace {集数} with starting episode number
+                e = str(episodes_start)
+                if len(e) == 1:
+                    e = f'0{e}'
+                single_file_name = file_name.replace('{集数}', e)
                 rename_file_success, response = rename_file(
-                    video_file, file_name)
+                    video_file, single_file_name)
                 if rename_file_success:
                     video_file = response
                     print_success(f"  视频文件成功重新命名为：{video_file}")
@@ -1042,7 +1049,12 @@ def process_tv(resource_url, video_path, season, episodes_start):
                     return False
             else:
                 # Just rename the file without making directory
-                success, new_path = rename_file(video_file, file_name)
+                # For single file, replace {集数} with starting episode number
+                e = str(episodes_start)
+                if len(e) == 1:
+                    e = f'0{e}'
+                single_file_name = file_name.replace('{集数}', e)
+                success, new_path = rename_file(video_file, single_file_name)
                 if success:
                     new_path = os.path.normpath(new_path)
                     print_success(f"重命名成功: {new_path}")
@@ -1053,10 +1065,44 @@ def process_tv(resource_url, video_path, season, episodes_start):
                     return False
 
         else:  # Directory (is_video_path == 2)
-            # First rename the folder
+            # Get all video files in the folder
+            get_video_files_success, video_files_response = get_video_files(video_path)
+            if not get_video_files_success:
+                print_error(f"  获取视频文件列表失败：{video_files_response}")
+                return False
+
+            video_files_list = video_files_response
+            episodes_num = len(video_files_list)
+            print(f"  文件夹内检测到 {episodes_num} 个视频文件")
+
+            # First rename all video files with episode numbers (like GUI)
+            print("  开始对文件重新命名...")
+            i = episodes_start
+            for vf in video_files_list:
+                # Pad episode number (like GUI logic)
+                e = str(i)
+                # Pad to match the width of the maximum episode number
+                max_ep = episodes_start + episodes_num - 1
+                while len(e) < len(str(max_ep)):
+                    e = f'0{e}'
+                # Ensure at least 2 digits
+                if len(e) == 1:
+                    e = f'0{e}'
+
+                # Replace {集数} with padded episode number
+                episode_file_name = file_name.replace('{集数}', e)
+                rename_file_success, response = rename_file(vf, episode_file_name)
+                if rename_file_success:
+                    print_success(f"    E{e}: {os.path.basename(response)}")
+                else:
+                    print_error(f"    重命名失败：{response}")
+                    return False
+                i += 1
+
+            # Then rename the folder (remove episode placeholder from name)
             print("  对文件夹重新命名...")
-            rename_directory_success, response = rename_folder(
-                video_path, file_name)
+            folder_name = file_name.replace('E{集数}', '').replace('{集数}', '')
+            rename_directory_success, response = rename_folder(video_path, folder_name)
             if rename_directory_success:
                 video_path = response
                 print_success(f"  视频文件夹成功重新命名为：{video_path}")
@@ -1064,20 +1110,9 @@ def process_tv(resource_url, video_path, season, episodes_start):
                 is_video_path, response = check_path_and_find_video(video_path)
                 if is_video_path == 2:
                     video_file = response
-                    print_success(f"  成功读取到视频文件：{video_file}")
                 else:
                     print_error(f"  读取视频文件失败：{response}")
                     return False
-            else:
-                print_error(f"  重命名失败：{response}")
-                return False
-
-            # Then rename the file inside the folder
-            print("  开始对文件重新命名...")
-            rename_file_success, response = rename_file(video_file, file_name)
-            if rename_file_success:
-                video_file = response
-                print_success(f"  视频文件成功重新命名为：{video_file}")
             else:
                 print_error(f"  重命名失败：{response}")
                 return False
