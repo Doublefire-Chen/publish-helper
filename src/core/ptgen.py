@@ -30,6 +30,9 @@ def get_pt_gen_description(pt_gen_api_url, resource_url):
         # 尝试解析JSON响应
         try:
             data = response.json()
+            print(f'[DEBUG] PT-Gen API URL: {pt_gen_api_url}')
+            print(f'[DEBUG] Resource URL: {resource_url}')
+            print(f'[DEBUG] Response keys: {list(data.keys())}')
         except ValueError:
             print('响应不是有效的JSON格式')
             return False, 'PT-Gen接口响应不是有效的JSON格式，请检查PT-Gen接口是否正常'
@@ -39,6 +42,7 @@ def get_pt_gen_description(pt_gen_api_url, resource_url):
 
         # 返回处理后的format字段和完整的数据
         if format_data != '' and format_data is not None:
+            print(f'[DEBUG] Raw format_data (first 500 chars): {repr(format_data[:500])}')
             format_data = format_data.replace('&#39;', '\'')
             personalized_signature = get_settings("personalized_signature")
             # 处理简介
