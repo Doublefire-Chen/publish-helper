@@ -886,9 +886,6 @@ def process_tv(resource_url, video_path, season, episodes_start):
 
     print_success(
         f"标题: {original_title or english_title} ({year}) S{season:02d}")
-    # Debug: show both titles
-    print(f"  [DEBUG] original_title: '{original_title}'")
-    print(f"  [DEBUG] english_title: '{english_title}'")
 
     # Handle missing English title
     if not english_title and original_title:

@@ -11,80 +11,35 @@ from src.core.tool import get_settings, get_abbreviation, chinese_to_int
 
 # 从PT-Gen响应中读取关键数据
 def get_pt_gen_info(description):
-    print(f'[DEBUG] ===== 开始解析PT-Gen响应 =====')
-    print(f'[DEBUG] 简介长度: {len(description)} 字符')
-    print(f'[DEBUG] 简介前200字符: {repr(description[:200])}')
-    
-    # Check for common prefixes
-    has_circle = '◎' in description
-    has_flower = '❁' in description
-    print(f'[DEBUG] 包含◎: {has_circle}, 包含❁: {has_flower}')
-    
+    print(f'获取到简介：{description}')
     description = description.replace('\\n', '\n')
     description = description.replace('\\\n', '\\n')
 
-    # Support both ◎ and ❁ prefixes used by different PT-Gen APIs
-    # Use character class [◎❁] to match either prefix
-    prefix_pattern = r'[◎❁]'
-    
-    # 正则表达式 - 支持两种前缀格式
-    categories_match = re.search(prefix_pattern + r'\s*类\s*别[：:\s]*([^\n]*)', description)
-    episodes_match = re.search(prefix_pattern + r'\s*集\s*数[：:\s]*(\d+)', description)  # 匹配集数
-    
-    # 年份匹配 - 支持多种格式
-    year_match = re.search(prefix_pattern + r'\s*年\s*代[：:\s]*(\d{4})', description)
+    # 正则表达式 - 使用原始格式匹配（带全角空格）
+    categories_match = re.search(r'◎类　　别\s*([^\n]*)', description)
+    episodes_match = re.search(r'◎集　　数\s*(\d+)', description)  # 匹配集数
+    year_match = re.search(r'◎年　　代\s*(\d{4})', description)
     if not year_match:
-        year_match = re.search(prefix_pattern + r'\s*上映日期[：:\s]*(\d{4})', description)
-    if not year_match:
-        # Fallback: try to find year in any common format
-        year_match = re.search(r'年\s*代[：:\s]*(\d{4})', description)
-    if not year_match:
-        year_match = re.search(r'上映日期[：:\s]*(\d{4})', description)
-    
-    print(f'[DEBUG] 年份匹配结果: {year_match.group(1) if year_match else "未找到"}')
+        year_match = re.search(r'◎上映日期\s*(\d{4})', description)
 
-    # 正则表达式获取名称 - 支持两种前缀格式
-    # Use [^◎❁\n]* to stop at newline OR next field marker (prevents cross-field capture)
-    pattern = prefix_pattern + r'\s*片\s*名[：:\s]*([^◎❁\n]+)|' + prefix_pattern + r'\s*译\s*名[：:\s]*([^◎❁\n]+)'
+    # 正则表达式获取名称 - 使用原始格式（带全角空格）
+    pattern = r'◎片　　名　(.*?)\n|◎译　　名　(.*?)\n'
     matches = re.findall(pattern, description)
-    
-    print(f'[DEBUG] 名称正则: {pattern}')
-    print(f'[DEBUG] 名称匹配原始结果: {matches}')
-    
-    # Filter out empty matches and clean up
-    cleaned_matches = []
-    for match in matches:
-        # Each match is a tuple (片名, 译名) - one will be empty
-        for content in match:
-            if content and content.strip():
-                cleaned_matches.append(content.strip())
-    
-    print(f'[DEBUG] 清理后的名称: {cleaned_matches}')
-    
-    # If no matches, try alternative patterns with full-width characters
-    if not cleaned_matches:
-        print('[DEBUG] 标准模式未匹配，尝试备用模式...')
-        # Try with more flexible spacing (including full-width spaces \u3000)
-        alt_pattern = r'[◎❁][\s\u3000]*片[\s\u3000]*名[\s\u3000：:]+([^◎❁\n]+)'
-        alt_matches = re.findall(alt_pattern, description)
-        print(f'[DEBUG] 备用片名模式结果: {alt_matches}')
-        
-        alt_pattern2 = r'[◎❁][\s\u3000]*译[\s\u3000]*名[\s\u3000：:]+([^◎❁\n]+)'
-        alt_matches2 = re.findall(alt_pattern2, description)
-        print(f'[DEBUG] 备用译名模式结果: {alt_matches2}')
-        
-        # Combine results
-        cleaned_matches = [m.strip() for m in alt_matches if m.strip()] + [m.strip() for m in alt_matches2 if m.strip()]
-        print(f'[DEBUG] 使用备用模式结果: {cleaned_matches}')
 
-    # Separate titles by '/'
-    separated_titles = []
-    for title_group in cleaned_matches:
-        for title in title_group.split('/'):
-            if title.strip():
-                separated_titles.append(title.strip())
-    
-    print(f'[DEBUG] 分割后的名称: {separated_titles}')
+    # If no matches with ◎ prefix, try ❁ prefix (alternative PT-Gen API format)
+    if not matches:
+        # ❁ format uses different spacing, try flexible pattern
+        alt_pattern = r'❁[\s\u3000]*片[\s\u3000]*名[\s\u3000：:]+([^\n]+)|❁[\s\u3000]*译[\s\u3000]*名[\s\u3000：:]+([^\n]+)'
+        matches = re.findall(alt_pattern, description)
+
+    # 将片名放第一位 (重要：确保片名在译名之前处理)
+    if matches:
+        matches.insert(0, matches.pop())
+
+    # Extract and separate the titles
+    titles = [title for match in matches for title in match if title]
+    separated_titles = [title.strip() for titles_group in titles for title in titles_group.split('/')]
+    print(f'获取的名称：{str(separated_titles)}')
 
     english_title = ''
 
@@ -92,7 +47,7 @@ def get_pt_gen_info(description):
     for title in separated_titles:
         if re.match(english_pattern, title):
             english_title += title
-            print(f'[DEBUG] 英文名称是: {english_title}')
+            print(f'英文名称是：{english_title}')
             break
 
     original_title = ''
@@ -110,11 +65,10 @@ def get_pt_gen_info(description):
 
     # 类别
     categories = categories_match.group(1).strip() if categories_match else ''
-    print(f'[DEBUG] 类别匹配结果: {categories}')
 
-    # 匹配"◎主　　演"或"◎演　　员" 或 "❁主演" 等格式
+    # 匹配"◎主　　演"或"◎演　　员"及其后的多行内容
     actor_pattern = re.compile(
-        prefix_pattern + r'\s*(主\s*演|演\s*员)[：:\s]*((?:[\s　]*.*?(?:\n|$))*)',
+        r'(◎主　　演|◎演　　员)\s*((?:[\s　]*.*?(?:\n|$))*)',  # 注意这里的 [\s　] 用于匹配半角和全角空格
         re.MULTILINE | re.DOTALL
     )
     # 搜索匹配
@@ -143,7 +97,7 @@ def get_pt_gen_info(description):
             if len(actors) == 5:
                 break
 
-    if '◎语　　言' in categories or '❁ 语' in categories:
+    if '◎语　　言' in categories:
         categories = '暂无分类'
 
     # 提取集数
