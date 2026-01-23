@@ -55,6 +55,25 @@ cp .env.example .env
 # 编辑 .env 文件配置你的API密钥
 ```
 
+### 系统依赖
+
+本项目使用 [pymediainfo](https://pypi.org/project/pymediainfo/) 提取视频信息，需要 `libmediainfo` 库支持。
+
+**Windows & macOS:** 无需手动安装，pymediainfo 已打包所需库文件。
+
+**Linux:** 需要手动安装 `libmediainfo`：
+
+```bash
+# Debian/Ubuntu
+apt install libmediainfo0v5
+
+# CentOS/RHEL/Fedora
+yum install libmediainfo  # 或 dnf install libmediainfo
+
+# Arch Linux
+pacman -S libmediainfo
+```
+
 ### 运行
 
 ```bash
