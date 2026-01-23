@@ -820,7 +820,7 @@ def process_movie(resource_url, video_path):
             print(f"\n{Colors.BOLD}Auto-Feed 链接:{Colors.END}")
             print(f"{Colors.CYAN}{auto_feed_link}{Colors.END}")
             print(
-                f"\n{Colors.YELLOW}提示: 链接已保存到 auto_feed_link.txt 文件{Colors.END}\n")
+                f"\n{Colors.YELLOW}提示: 链接已保存到 temp/auto_feed_link.txt 文件{Colors.END}\n")
         else:
             print(f"\n{Colors.YELLOW}提示: 直接 Ctrl+V 粘贴到浏览器即可{Colors.END}\n")
     else:
@@ -1309,7 +1309,7 @@ def process_tv(resource_url, video_path, season, episodes_start):
             print(f"\n{Colors.BOLD}Auto-Feed 链接:{Colors.END}")
             print(f"{Colors.CYAN}{auto_feed_link}{Colors.END}")
             print(
-                f"\n{Colors.YELLOW}提示: 链接已保存到 auto_feed_link.txt 文件{Colors.END}\n")
+                f"\n{Colors.YELLOW}提示: 链接已保存到 temp/auto_feed_link.txt 文件{Colors.END}\n")
         else:
             print(f"\n{Colors.YELLOW}提示: 直接 Ctrl+V 粘贴到浏览器即可{Colors.END}\n")
     else:
@@ -1722,7 +1722,7 @@ def process_playlet(original_title, year, area, categories, language, playlet_so
             print(f"\n{Colors.BOLD}Auto-Feed 链接:{Colors.END}")
             print(f"{Colors.CYAN}{auto_feed_link}{Colors.END}")
             print(
-                f"\n{Colors.YELLOW}提示: 链接已保存到 auto_feed_link.txt 文件{Colors.END}\n")
+                f"\n{Colors.YELLOW}提示: 链接已保存到 temp/auto_feed_link.txt 文件{Colors.END}\n")
         else:
             print(f"\n{Colors.YELLOW}提示: 直接 Ctrl+V 粘贴到浏览器即可{Colors.END}\n")
     else:
