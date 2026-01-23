@@ -779,9 +779,10 @@ def process_movie(resource_url, video_path):
             import pyperclip
             pyperclip.copy(auto_feed_link)
             clipboard_success = True
-            print_success("✓ 链接已自动复制到剪贴板")
-        except ImportError:
-            # pyperclip not available, try platform-specific methods
+            print_success("链接已自动复制到剪贴板")
+        except Exception:
+            # pyperclip not available or no clipboard mechanism (headless Linux)
+            # Try platform-specific methods
             try:
                 if sys.platform == 'win32':
                     # Windows: use built-in clip command
@@ -790,7 +791,7 @@ def process_movie(resource_url, video_path):
                         ['clip'], stdin=subprocess.PIPE, shell=True)
                     process.communicate(auto_feed_link.encode('utf-16le'))
                     clipboard_success = True
-                    print_success("✓ 链接已自动复制到剪贴板")
+                    print_success("链接已自动复制到剪贴板")
                 elif sys.platform == 'darwin':
                     # macOS: use pbcopy
                     import subprocess
@@ -798,8 +799,8 @@ def process_movie(resource_url, video_path):
                         ['pbcopy'], stdin=subprocess.PIPE)
                     process.communicate(auto_feed_link.encode('utf-8'))
                     clipboard_success = True
-                    print_success("✓ 链接已自动复制到剪贴板")
-            except Exception as e:
+                    print_success("链接已自动复制到剪贴板")
+            except Exception:
                 pass
 
         # Save to file as backup in temp folder (avoid git tracking)
@@ -1271,8 +1272,9 @@ def process_tv(resource_url, video_path, season, episodes_start):
             import pyperclip
             pyperclip.copy(auto_feed_link)
             clipboard_success = True
-            print_success("✓ 链接已自动复制到剪贴板")
-        except ImportError:
+            print_success("链接已自动复制到剪贴板")
+        except Exception:
+            # pyperclip not available or no clipboard mechanism (headless Linux)
             try:
                 if sys.platform == 'win32':
                     import subprocess
@@ -1280,15 +1282,15 @@ def process_tv(resource_url, video_path, season, episodes_start):
                         ['clip'], stdin=subprocess.PIPE, shell=True)
                     process.communicate(auto_feed_link.encode('utf-16le'))
                     clipboard_success = True
-                    print_success("✓ 链接已自动复制到剪贴板")
+                    print_success("链接已自动复制到剪贴板")
                 elif sys.platform == 'darwin':
                     import subprocess
                     process = subprocess.Popen(
                         ['pbcopy'], stdin=subprocess.PIPE)
                     process.communicate(auto_feed_link.encode('utf-8'))
                     clipboard_success = True
-                    print_success("✓ 链接已自动复制到剪贴板")
-            except Exception as e:
+                    print_success("链接已自动复制到剪贴板")
+            except Exception:
                 pass
 
         # Save to file as backup
@@ -1299,7 +1301,7 @@ def process_tv(resource_url, video_path, season, episodes_start):
             link_file = os.path.join(temp_dir, 'auto_feed_link.txt')
             with open(link_file, 'w', encoding='utf-8') as f:
                 f.write(auto_feed_link)
-            print_success(f"✓ 链接已保存到文件: {link_file}")
+            print_success(f"链接已保存到文件: {link_file}")
         except Exception as e:
             print_warning(f"保存链接文件失败: {e}")
 
@@ -1683,8 +1685,9 @@ def process_playlet(original_title, year, area, categories, language, playlet_so
             import pyperclip
             pyperclip.copy(auto_feed_link)
             clipboard_success = True
-            print_success("✓ 链接已自动复制到剪贴板")
-        except ImportError:
+            print_success("链接已自动复制到剪贴板")
+        except Exception:
+            # pyperclip not available or no clipboard mechanism (headless Linux)
             try:
                 if sys.platform == 'win32':
                     import subprocess
@@ -1692,15 +1695,15 @@ def process_playlet(original_title, year, area, categories, language, playlet_so
                         ['clip'], stdin=subprocess.PIPE, shell=True)
                     process.communicate(auto_feed_link.encode('utf-16le'))
                     clipboard_success = True
-                    print_success("✓ 链接已自动复制到剪贴板")
+                    print_success("链接已自动复制到剪贴板")
                 elif sys.platform == 'darwin':
                     import subprocess
                     process = subprocess.Popen(
                         ['pbcopy'], stdin=subprocess.PIPE)
                     process.communicate(auto_feed_link.encode('utf-8'))
                     clipboard_success = True
-                    print_success("✓ 链接已自动复制到剪贴板")
-            except Exception as e:
+                    print_success("链接已自动复制到剪贴板")
+            except Exception:
                 pass
 
         # Save to file as backup
@@ -1711,7 +1714,7 @@ def process_playlet(original_title, year, area, categories, language, playlet_so
             link_file = os.path.join(temp_dir, 'auto_feed_link.txt')
             with open(link_file, 'w', encoding='utf-8') as f:
                 f.write(auto_feed_link)
-            print_success(f"✓ 链接已保存到文件: {link_file}")
+            print_success(f"链接已保存到文件: {link_file}")
         except Exception as e:
             print_warning(f"保存链接文件失败: {e}")
 
