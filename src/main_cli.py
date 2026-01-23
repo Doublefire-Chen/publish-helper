@@ -39,6 +39,7 @@ from src.core.screenshot import get_screenshot, get_thumbnail
 from src.core.tool import (
     check_path_and_find_video,
     chinese_name_to_pinyin,
+    delete_season_number,
     get_playlet_description,
     get_settings,
     get_video_files,
@@ -885,6 +886,9 @@ def process_tv(resource_url, video_path, season, episodes_start):
 
     print_success(
         f"标题: {original_title or english_title} ({year}) S{season:02d}")
+    # Debug: show both titles
+    print(f"  [DEBUG] original_title: '{original_title}'")
+    print(f"  [DEBUG] english_title: '{english_title}'")
 
     # Handle missing English title
     if not english_title and original_title:
@@ -947,6 +951,9 @@ def process_tv(resource_url, video_path, season, episodes_start):
     # Format season number (pad with zero if needed)
     season_str = f"{season:02d}" if season < 10 else str(season)
     season_number = str(season)  # For template (no padding)
+
+    # Remove season number from english_title (like GUI does)
+    english_title = delete_season_number(english_title, season_number)
 
     # Use source and team from initial selections
     other_titles_str = ' / '.join(other_names) if other_names else ''
