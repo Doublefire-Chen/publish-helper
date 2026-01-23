@@ -22,9 +22,20 @@ def get_pt_gen_info(description):
     if not year_match:
         year_match = re.search(r'◎上映日期\s*(\d{4})', description)
 
+    # Fallback for ❁ prefix format
+    if not categories_match:
+        categories_match = re.search(r'❁[\s\u3000]*类[\s\u3000]*别[\s\u3000：:]*([^\n]*)', description)
+    if not episodes_match:
+        episodes_match = re.search(r'❁[\s\u3000]*集[\s\u3000]*数[\s\u3000：:]*(\d+)', description)
+    if not year_match:
+        year_match = re.search(r'❁[\s\u3000]*年[\s\u3000]*代[\s\u3000：:]*(\d{4})', description)
+    if not year_match:
+        year_match = re.search(r'❁[\s\u3000]*上映日期[\s\u3000：:]*(\d{4})', description)
+
     # 正则表达式获取名称 - 使用原始格式（带全角空格）
     pattern = r'◎片　　名　(.*?)\n|◎译　　名　(.*?)\n'
     matches = re.findall(pattern, description)
+    used_circle_prefix = bool(matches)  # Track which format was used
 
     # If no matches with ◎ prefix, try ❁ prefix (alternative PT-Gen API format)
     if not matches:
@@ -32,8 +43,9 @@ def get_pt_gen_info(description):
         alt_pattern = r'❁[\s\u3000]*片[\s\u3000]*名[\s\u3000：:]+([^\n]+)|❁[\s\u3000]*译[\s\u3000]*名[\s\u3000：:]+([^\n]+)'
         matches = re.findall(alt_pattern, description)
 
-    # 将片名放第一位 (重要：确保片名在译名之前处理)
-    if matches:
+    # 将片名放第一位 - 仅对◎格式需要（因为◎格式中译名在片名之前）
+    # ❁格式中片名已经在译名之前，不需要重新排序
+    if matches and used_circle_prefix:
         matches.insert(0, matches.pop())
 
     # Extract and separate the titles
@@ -74,6 +86,14 @@ def get_pt_gen_info(description):
     # 搜索匹配
     actor_match = actor_pattern.search(description)
 
+    # Fallback for ❁ prefix format
+    if not actor_match:
+        actor_pattern_alt = re.compile(
+            r'(❁[\s\u3000]*主[\s\u3000]*演|❁[\s\u3000]*演[\s\u3000]*员)[\s\u3000：:]*((?:[\s　]*.*?(?:\n|$))*)',
+            re.MULTILINE | re.DOTALL
+        )
+        actor_match = actor_pattern_alt.search(description)
+
     actors = []
     if actor_match:
         # 获取演员信息部分并按行分割
@@ -97,7 +117,7 @@ def get_pt_gen_info(description):
             if len(actors) == 5:
                 break
 
-    if '◎语　　言' in categories:
+    if '◎语　　言' in categories or '❁' in categories or '语' in categories[:5]:
         categories = '暂无分类'
 
     # 提取集数
