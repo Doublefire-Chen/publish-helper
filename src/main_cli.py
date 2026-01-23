@@ -24,6 +24,7 @@ from typing import Iterable
 from src.core.autofeed import get_auto_feed_link
 from src.core.mediainfo import get_media_info
 from src.core.picturebed import upload_picture
+from src.core.poster import process_poster
 from src.core.ptgen import get_pt_gen_description
 from src.core.rename import (
     create_hard_link,
@@ -148,6 +149,58 @@ def getch():
         finally:
             termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
         return ch
+
+
+def process_poster_in_description(description):
+    """Process poster URLs in description if auto download/upload is enabled.
+
+    Finds the first [img]URL[/img] tag in the description, downloads the poster,
+    re-uploads it to the configured picture bed, and replaces the URL.
+    """
+    import re
+
+    auto_download_upload_poster = get_settings('auto_download_upload_poster') == 'True'
+    if not auto_download_upload_poster:
+        return description
+
+    # Extract poster URL from [img]...[/img] tag
+    img_pattern = r'\[img\](https?://[^\]]+)\[/img\]'
+    match = re.search(img_pattern, description)
+
+    if not match:
+        return description
+
+    original_poster_url = match.group(1)
+    print(f"检测到海报链接: {original_poster_url}")
+
+    picture_bed_api_url = get_settings('picture_bed_api_url')
+    picture_bed_api_token = get_settings('picture_bed_api_token')
+    screenshot_storage_path = get_settings('screenshot_storage_path')
+
+    print("正在下载并上传海报...")
+
+    # Process the poster
+    success, result = process_poster(
+        original_poster_url,
+        picture_bed_api_url,
+        picture_bed_api_token,
+        screenshot_storage_path
+    )
+
+    if success:
+        uploaded_url = result
+        print(f"{Colors.GREEN}✓ 海报上传成功: {uploaded_url}{Colors.END}")
+
+        # Replace the original URL with uploaded URL
+        description = description.replace(
+            f'[img]{original_poster_url}[/img]',
+            f'[img]{uploaded_url}[/img]'
+        )
+        print(f"{Colors.GREEN}✓ 已替换简介中的海报链接{Colors.END}")
+    else:
+        print(f"{Colors.YELLOW}⚠ 海报上传失败: {result}{Colors.END}")
+
+    return description
 
 
 # ANSI color codes for terminal output
@@ -399,6 +452,9 @@ def process_movie(resource_url, video_path):
 
     print_success("PT-Gen 信息获取成功")
 
+    # Process poster in description (download and re-upload if enabled)
+    description = process_poster_in_description(description)
+
     # Step 2: Parse PT-Gen info
     print_step(2, total_steps, "解析 PT-Gen 信息...")
     try:
@@ -625,7 +681,7 @@ def process_movie(resource_url, video_path):
             if thumbnail_success:
                 print_success(f"缩略图生成成功: {thumbnail_path}")
                 # Add thumbnail at the beginning
-                pictures.insert(0, thumbnail_path)
+                pictures.append(thumbnail_path)
             else:
                 print_warning(f"缩略图生成失败: {thumbnail_path}")
 
@@ -805,6 +861,9 @@ def process_tv(resource_url, video_path, season, episodes_start):
         description = response
 
     print_success("PT-Gen 信息获取成功")
+
+    # Process poster in description (download and re-upload if enabled)
+    description = process_poster_in_description(description)
 
     # Step 2: Parse PT-Gen info
     print_step(2, total_steps, "解析 PT-Gen 信息...")
@@ -1066,7 +1125,7 @@ def process_tv(resource_url, video_path, season, episodes_start):
             )
             if thumbnail_success:
                 print_success(f"缩略图生成成功: {thumbnail_path}")
-                pictures.insert(0, thumbnail_path)
+                pictures.append(thumbnail_path)
             else:
                 print_warning(f"缩略图生成失败: {thumbnail_path}")
 
@@ -1478,7 +1537,7 @@ def process_playlet(original_title, year, area, categories, language, playlet_so
             )
             if thumbnail_success:
                 print_success(f"缩略图生成成功: {thumbnail_path}")
-                pictures.insert(0, thumbnail_path)
+                pictures.append(thumbnail_path)
             else:
                 print_warning(f"缩略图生成失败: {thumbnail_path}")
 
