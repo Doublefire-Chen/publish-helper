@@ -890,10 +890,13 @@ def process_tv(resource_url, video_path, season, episodes_start):
         print_error(f"解析 PT-Gen 失败: {e}")
         return False
 
-    # Fallback: use chinese_title from API response if original_title is empty
-    if not original_title and pt_gen_data.get('chinese_title'):
+    # For TV series, prefer API chinese_title as it often includes season info (e.g., "双面女间谍 第五季")
+    # The description parsing might only extract base title without season suffix
+    if pt_gen_data.get('chinese_title'):
         original_title = pt_gen_data['chinese_title']
         print(f"  使用API返回的中文标题: {original_title}")
+    elif not original_title:
+        print_warning("未能获取中文标题")
 
     # Fallback: use foreign_title from API response if english_title is empty
     if not english_title and pt_gen_data.get('foreign_title'):
