@@ -506,17 +506,8 @@ def process_movie(resource_url, video_path):
         :8]
     print_success(f"视频格式: {video_format} {video_codec}")
 
-    # Step 4: Get MediaInfo
-    print_step(4, total_steps, "获取 MediaInfo...")
-    success, media_info = get_media_info(video_file)
-    if success:
-        print_success("MediaInfo 获取成功")
-    else:
-        print_warning(f"MediaInfo 获取失败: {media_info}")
-        media_info = ""
-
-    # Step 5: Generate file name
-    print_step(5, total_steps, "生成文件名...")
+    # Step 4: Generate file name
+    print_step(4, total_steps, "生成文件名...")
 
     # Use source and team from initial selections
     other_titles_str = ' / '.join(other_names) if other_names else ''
@@ -541,8 +532,8 @@ def process_movie(resource_url, video_path):
     print_success(f"主标题: {main_title}")
     print_success(f"文件名: {file_name}")
 
-    # Step 6: Summary
-    print_step(6, total_steps, "生成摘要...")
+    # Step 5: Summary
+    print_step(5, total_steps, "生成摘要...")
 
     print(f"\n{Colors.CYAN}{'='*50}{Colors.END}")
     print(f"{Colors.BOLD}处理结果 / Results:{Colors.END}")
@@ -650,6 +641,15 @@ def process_movie(resource_url, video_path):
                 return False
 
         print_success("重命名全部成功")
+
+    # Get MediaInfo after renaming (so Complete name shows renamed file)
+    print("正在获取 MediaInfo...")
+    success, media_info = get_media_info(video_file)
+    if success:
+        print_success("MediaInfo 获取成功")
+    else:
+        print_warning(f"MediaInfo 获取失败: {media_info}")
+        media_info = ""
 
     # Create hard link if enabled
     if create_hardlink:
@@ -958,17 +958,8 @@ def process_tv(resource_url, video_path, season, episodes_start):
         :8]
     print_success(f"视频格式: {video_format} {video_codec}")
 
-    # Step 4: Get MediaInfo
-    print_step(4, total_steps, "获取 MediaInfo...")
-    success, media_info = get_media_info(video_file)
-    if success:
-        print_success("MediaInfo 获取成功")
-    else:
-        print_warning(f"MediaInfo 获取失败: {media_info}")
-        media_info = ""
-
-    # Step 5: Generate file name
-    print_step(5, total_steps, "生成文件名...")
+    # Step 4: Generate file name
+    print_step(4, total_steps, "生成文件名...")
 
     # Format season number (pad with zero if needed)
     season_str = f"{season:02d}" if season < 10 else str(season)
@@ -1002,8 +993,8 @@ def process_tv(resource_url, video_path, season, episodes_start):
     print_success(f"主标题: {main_title}")
     print_success(f"文件名: {file_name}")
 
-    # Step 6: Summary
-    print_step(6, total_steps, "生成摘要...")
+    # Step 5: Summary
+    print_step(5, total_steps, "生成摘要...")
 
     print(f"\n{Colors.CYAN}{'='*50}{Colors.END}")
     print(f"{Colors.BOLD}处理结果 / Results:{Colors.END}")
@@ -1147,6 +1138,15 @@ def process_tv(resource_url, video_path, season, episodes_start):
                 return False
 
         print_success("重命名全部成功")
+
+    # Get MediaInfo after renaming (so Complete name shows renamed file)
+    print("正在获取 MediaInfo...")
+    success, media_info = get_media_info(video_file)
+    if success:
+        print_success("MediaInfo 获取成功")
+    else:
+        print_warning(f"MediaInfo 获取失败: {media_info}")
+        media_info = ""
 
     # Create hard link if enabled
     if create_hardlink:
@@ -1394,17 +1394,8 @@ def process_playlet(original_title, year, area, categories, language, playlet_so
         :8]
     print_success(f"视频格式: {video_format} {video_codec}")
 
-    # Step 3: Get MediaInfo
-    print_step(3, total_steps, "获取 MediaInfo...")
-    success, media_info = get_media_info(video_file)
-    if success:
-        print_success("MediaInfo 获取成功")
-    else:
-        print_warning(f"MediaInfo 获取失败: {media_info}")
-        media_info = ""
-
-    # Step 4: Generate file name
-    print_step(4, total_steps, "生成文件名...")
+    # Step 3: Generate file name
+    print_step(3, total_steps, "生成文件名...")
 
     # Format season number (pad with zero if needed)
     season_str = f"{season:02d}" if season < 10 else str(season)
@@ -1445,8 +1436,8 @@ def process_playlet(original_title, year, area, categories, language, playlet_so
     print_success(f"副标题: {second_title}")
     print_success(f"文件名: {file_name}")
 
-    # Step 5: Summary
-    print_step(5, total_steps, "生成摘要...")
+    # Step 4: Summary
+    print_step(4, total_steps, "生成摘要...")
 
     print(f"\n{Colors.CYAN}{'='*50}{Colors.END}")
     print(f"{Colors.BOLD}处理结果 / Results:{Colors.END}")
@@ -1560,6 +1551,15 @@ def process_playlet(original_title, year, area, categories, language, playlet_so
                 return False
 
         print_success("重命名全部成功")
+
+    # Get MediaInfo after renaming (so Complete name shows renamed file)
+    print("正在获取 MediaInfo...")
+    success, media_info = get_media_info(video_file)
+    if success:
+        print_success("MediaInfo 获取成功")
+    else:
+        print_warning(f"MediaInfo 获取失败: {media_info}")
+        media_info = ""
 
     # Create hard link if enabled
     if create_hardlink:
