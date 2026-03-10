@@ -40,3 +40,5 @@ MarkupSafe==2.1.5
 
 # Development dependencies (optional)
 # Install with: pip install -r requirements-dev.txt
+
+pyperclip
