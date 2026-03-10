@@ -773,7 +773,7 @@ def api_get_pt_gen_info():
                 'statusCode': '缺少PT-Gen简介内容。'
             }), 422
 
-        original_title, english_title, year, other_names_sorted, category, actors_list = get_pt_gen_info(
+        original_title, english_title, year, other_names_sorted, category, actors_list, episodes, season = get_pt_gen_info(
             description)
         print(original_title, english_title, year, other_names_sorted, category, actors_list)
         actors = ''
@@ -1749,8 +1749,8 @@ def api_get_pt_gen_info_by_url():
         if get_pt_gen_description_success:
             # response is now (format_data, full_data)
             format_data, full_data = response
-            original_title, english_title, year, other_names_sorted, category, actors_list = get_pt_gen_info(
-                format_data)
+            original_title, english_title, year, other_names_sorted, category, actors_list, episodes, season = get_pt_gen_info(
+                format_data, raw_data=full_data)
             actors = ''
             other_titles = ''
             is_first = True
@@ -2182,7 +2182,7 @@ def api_auto_handle_movie():
 
         # 获取PT-GenInfo
         print(f'获取PT-GenInfo，从{data_instance.description}')
-        original_title, english_title, year, other_names_sorted, categories, actors_list, episodes = get_pt_gen_info(
+        original_title, english_title, year, other_names_sorted, categories, actors_list, episodes, season = get_pt_gen_info(
             data_instance.description)
         print(original_title, english_title, year, other_names_sorted, categories, actors_list)
         actors = ''

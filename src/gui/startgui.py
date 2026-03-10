@@ -275,7 +275,7 @@ class mainwindow(QMainWindow, Ui_Mainwindow):
         print('启动备用pt_gen_thread成功，请耐心等待Api返回结果并分析...')
         self.debugBrowserMovie.append('启动备用pt_gen_thread成功，请耐心等待Api返回结果并分析...')
 
-    def handle_get_pt_gen_movie_result(self, get_success, response):
+    def handle_get_pt_gen_movie_result(self, get_success, response, raw_data_json=''):
         if self.get_pt_gen_success:
             print("主线程已经成功获取到简介，备用线程关闭")
             return
@@ -567,7 +567,7 @@ class mainwindow(QMainWindow, Ui_Mainwindow):
             get_name_movie_failure_number += 1
             return False, [f'启动PtGen线程出错：{e}']
 
-    def handle_get_pt_gen_for_name_movie_result(self, get_success, response):
+    def handle_get_pt_gen_for_name_movie_result(self, get_success, response, raw_data_json=''):
         global get_name_movie_success, get_name_movie_failure_number  # 声明全局变量
         try:
             if self.get_pt_gen_success:
@@ -610,8 +610,16 @@ class mainwindow(QMainWindow, Ui_Mainwindow):
                     print('开始获取PT-Gen关键信息')
                     self.debugBrowserMovie.append('开始获取PT-Gen关键信息')
                     try:
+                        # 解析raw_data JSON以传递给get_pt_gen_info
+                        pt_gen_raw_data = None
+                        if raw_data_json:
+                            try:
+                                import json as _json
+                                pt_gen_raw_data = _json.loads(raw_data_json)
+                            except Exception:
+                                pass
                         original_title, english_title, year, other_names_sorted, categories, actors_list, episodes, season = get_pt_gen_info(
-                            description)
+                            description, raw_data=pt_gen_raw_data)
                     except Exception as e:
                         self.debugBrowserMovie.append(
                             f'获取到了PT-Gen Api的响应，但是对于响应的分析有错误：{e}\n获取到的响应是{str(description)}\n请重试！')
@@ -964,7 +972,7 @@ class mainwindow(QMainWindow, Ui_Mainwindow):
         print('启动备用pt_gen_thread成功，请耐心等待Api返回结果并分析...')
         self.debugBrowserTV.append('启动备用pt_gen_thread成功，请耐心等待Api返回结果并分析...')
 
-    def handle_get_pt_gen_tv_result(self, get_success, response):
+    def handle_get_pt_gen_tv_result(self, get_success, response, raw_data_json=''):
         if self.get_pt_gen_success:
             print("主线程已经成功获取到简介，备用线程关闭")
             return
@@ -1245,7 +1253,7 @@ class mainwindow(QMainWindow, Ui_Mainwindow):
             get_name_tv_failure_number += 1
             return False, [f'启动PT-Gen线程出错：{e}']
 
-    def handle_get_pt_gen_for_name_tv_result(self, get_success, response):
+    def handle_get_pt_gen_for_name_tv_result(self, get_success, response, raw_data_json=''):
         global get_name_tv_success, get_name_tv_failure_number
         try:
             if self.get_pt_gen_success:
@@ -1304,8 +1312,16 @@ class mainwindow(QMainWindow, Ui_Mainwindow):
                     print('开始获取PT-Gen关键信息')
                     self.debugBrowserTV.append('开始获取PT-Gen关键信息')
                     try:
+                        # 解析raw_data JSON以传递给get_pt_gen_info
+                        pt_gen_raw_data = None
+                        if raw_data_json:
+                            try:
+                                import json as _json
+                                pt_gen_raw_data = _json.loads(raw_data_json)
+                            except Exception:
+                                pass
                         original_title, english_title, year, other_names_sorted, categories, actors_list, episodes, season = get_pt_gen_info(
-                            description)
+                            description, raw_data=pt_gen_raw_data)
                     except Exception as e:
                         self.debugBrowserTV.append(
                             f'获取到了PT-Gen Api的响应，但是对于响应的分析有错误：{e}\n获取到的响应是{str(description)}\n请重试！')
@@ -2287,7 +2303,8 @@ class settings(QDialog, Ui_Settings):
 
 class GetPtGenThread(QThread):
     # 创建一个信号，用于在数据处理完毕后与主线程通信
-    result_signal = pyqtSignal(bool, str)
+    # 第三个参数为JSON序列化的原始API响应数据
+    result_signal = pyqtSignal(bool, str, str)
 
     def __init__(self, api_url, resource_url):
         super().__init__()
@@ -2296,6 +2313,7 @@ class GetPtGenThread(QThread):
 
     def run(self):
         try:
+            import json as _json
             # 这里放置耗时的HTTP请求操作
             get_pt_gen_description_success, response = get_pt_gen_description(self.api_url, self.resource_url)
 
@@ -2304,9 +2322,14 @@ class GetPtGenThread(QThread):
             if get_pt_gen_description_success:
                 # response is now (format_data, full_data)
                 format_data, full_data = response
-                self.result_signal.emit(get_pt_gen_description_success, format_data)
+                # 将原始数据序列化为JSON字符串通过信号传递
+                try:
+                    raw_data_json = _json.dumps(full_data, ensure_ascii=False)
+                except Exception:
+                    raw_data_json = ''
+                self.result_signal.emit(get_pt_gen_description_success, format_data, raw_data_json)
             else:
-                self.result_signal.emit(get_pt_gen_description_success, response)
+                self.result_signal.emit(get_pt_gen_description_success, response, '')
             print('返回结果成功')
         except Exception as e:
             print(f'异常发生：{e}')

@@ -462,20 +462,12 @@ def process_movie(resource_url, video_path):
     print_step(2, total_steps, "解析 PT-Gen 信息...")
     try:
         original_title, english_title, year, other_names, categories, actors, episodes, season = get_pt_gen_info(
-            description)
+            description, raw_data=pt_gen_data)
     except Exception as e:
         print_error(f"解析 PT-Gen 失败: {e}")
         return False
 
-    # Fallback: use chinese_title from API response if original_title is empty
-    if not original_title and pt_gen_data.get('chinese_title'):
-        original_title = pt_gen_data['chinese_title']
-        print(f"  使用API返回的中文标题: {original_title}")
 
-    # Fallback: use foreign_title from API response if english_title is empty
-    if not english_title and pt_gen_data.get('foreign_title'):
-        english_title = pt_gen_data['foreign_title']
-        print(f"  使用API返回的外文标题: {english_title}")
 
     if not year:
         print_error("未能获取年份信息")
@@ -885,23 +877,12 @@ def process_tv(resource_url, video_path, season, episodes_start):
     print_step(2, total_steps, "解析 PT-Gen 信息...")
     try:
         original_title, english_title, year, other_names, categories, actors, episodes, pt_gen_season = get_pt_gen_info(
-            description)
+            description, raw_data=pt_gen_data)
     except Exception as e:
         print_error(f"解析 PT-Gen 失败: {e}")
         return False
 
-    # For TV series, prefer API chinese_title as it often includes season info (e.g., "双面女间谍 第五季")
-    # The description parsing might only extract base title without season suffix
-    if pt_gen_data.get('chinese_title'):
-        original_title = pt_gen_data['chinese_title']
-        print(f"  使用API返回的中文标题: {original_title}")
-    elif not original_title:
-        print_warning("未能获取中文标题")
 
-    # Fallback: use foreign_title from API response if english_title is empty
-    if not english_title and pt_gen_data.get('foreign_title'):
-        english_title = pt_gen_data['foreign_title']
-        print(f"  使用API返回的外文标题: {english_title}")
 
     if not year:
         print_error("未能获取年份信息")

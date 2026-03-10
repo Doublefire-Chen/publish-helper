@@ -10,10 +10,103 @@ from src.core.tool import get_settings, get_abbreviation, chinese_to_int
 
 
 # 从PT-Gen响应中读取关键数据
-def get_pt_gen_info(description):
+def get_pt_gen_info(description, raw_data=None):
+    """从PT-Gen响应中读取关键数据。
+
+    当 raw_data（PT-Gen API 的原始 JSON 响应字典）可用时，直接从结构化数据中
+    提取标题、年份、类别、演员等信息，比正则解析更准确可靠。
+    每个字段独立回退：如果 raw_data 中缺少某个字段，则使用正则从 description 中解析。
+
+    Args:
+        description: PT-Gen 格式化的描述文本。
+        raw_data: PT-Gen API 返回的原始 JSON 字典（可选）。
+
+    Returns:
+        tuple: (original_title, english_title, year, other_titles, categories, actors, episodes, season)
+    """
     print(f'获取到简介：{description}')
+    if raw_data:
+        print(f'获取到原始JSON数据，字段: {list(raw_data.keys())}')
+
     description = description.replace('\\n', '\n')
     description = description.replace('\\\n', '\\n')
+
+    # ========== 从 raw_data 提取（优先）==========
+    raw_original_title = ''
+    raw_english_title = ''
+    raw_year = ''
+    raw_other_titles = []
+    raw_categories = ''
+    raw_actors = []
+    raw_episodes = None
+    raw_season = None
+
+    if raw_data and isinstance(raw_data, dict):
+        # 中文标题
+        raw_original_title = raw_data.get('chinese_title', '') or ''
+        print(f'  [raw_data] chinese_title: {raw_original_title}')
+
+        # 英文/外文标题
+        raw_english_title = raw_data.get('foreign_title', '') or ''
+        print(f'  [raw_data] foreign_title: {raw_english_title}')
+
+        # 年份
+        raw_year = str(raw_data.get('year', '') or '')
+        print(f'  [raw_data] year: {raw_year}')
+
+        # 其他名称（aka 列表）
+        aka_list = raw_data.get('aka', [])
+        if isinstance(aka_list, list):
+            # 过滤掉已作为主标题的名称
+            raw_other_titles = [name.strip() for name in aka_list
+                                if name.strip() and name.strip() != raw_original_title and name.strip() != raw_english_title]
+        print(f'  [raw_data] aka: {raw_other_titles}')
+
+        # 类别（genre 列表 → 用 " / " 拼接）
+        genre_list = raw_data.get('genre', [])
+        if isinstance(genre_list, list) and genre_list:
+            raw_categories = ' / '.join(genre_list)
+        print(f'  [raw_data] genre: {raw_categories}')
+
+        # 演员（cast 列表，取前5个中文名）
+        cast_list = raw_data.get('cast', [])
+        if isinstance(cast_list, list):
+            for cast_name in cast_list:
+                if not cast_name:
+                    continue
+                # 提取中文名称部分
+                chinese_match = re.search(r'([\u4e00-\u9fa5·]+)', str(cast_name))
+                if chinese_match:
+                    raw_actors.append(chinese_match.group())
+                if len(raw_actors) >= 5:
+                    break
+        print(f'  [raw_data] cast (前5): {raw_actors}')
+
+        # 集数
+        raw_episodes_val = raw_data.get('episodes', None)
+        if raw_episodes_val is not None:
+            try:
+                raw_episodes = int(raw_episodes_val)
+            except (ValueError, TypeError):
+                pass
+        print(f'  [raw_data] episodes: {raw_episodes}')
+
+        # 季数 - 从 chinese_title 中解析（如 "双面女间谍 第五季"）
+        if raw_original_title:
+            season_in_title = re.search(r'第(\d+)季|第([零一二三四五六七八九十百千万]+)季|Season (\d+)', raw_original_title)
+            if season_in_title:
+                if season_in_title.group(1):
+                    raw_season = int(season_in_title.group(1))
+                elif season_in_title.group(2):
+                    try:
+                        raw_season = chinese_to_int(season_in_title.group(2))
+                    except ValueError:
+                        pass
+                elif season_in_title.group(3):
+                    raw_season = int(season_in_title.group(3))
+        print(f'  [raw_data] season: {raw_season}')
+
+    # ========== 正则解析 description（回退）==========
 
     # 正则表达式 - 使用原始格式匹配（带全角空格）
     categories_match = re.search(r'◎类　　别\s*([^\n]*)', description)
@@ -53,30 +146,26 @@ def get_pt_gen_info(description):
     separated_titles = [title.strip() for titles_group in titles for title in titles_group.split('/')]
     print(f'获取的名称：{str(separated_titles)}')
 
-    english_title = ''
-
+    regex_english_title = ''
     english_pattern = r'^[A-Za-z\-\—\:\s\(\)\'\'\@\#\$\%\^\&\*\!\?\,\.\;\[\]\{\}\|\<\>\`\~\d\u2160-\u2188]+$'
     for title in separated_titles:
         if re.match(english_pattern, title):
-            english_title += title
-            print(f'英文名称是：{english_title}')
+            regex_english_title = title
             break
 
-    original_title = ''
+    regex_original_title = ''
     original_pattern = (r'[\u4e00-\u9fa5\-\—\:\：\s\(\)\（\）\'\'\@\#\$\%\^\&\*\!\?\,\;\！\？\,\.\;\，\。\；\[\]\{'
                         r'\}\|\<\>\【\】\《\》\`\~\·\d\u0041-\u005A\u0061-\u007A\u00C0-\u00FF\u0400-\u04FF\u0600-\u06FF'
                         r'\u0750-\u077F\u08A0-\u08FF\u0E00-\u0E7F\u0F00-\u0FFF\u3040-\u309F\u30A0-\u30FF\u3400-\u4DBF\u4e00-\u9fff\uAC00-\uD7AF]+')
     for title in separated_titles:
         if re.search(original_pattern, title) and not re.match(english_pattern, title):
-            original_title += title
-            print(f'原始名称是：{title}')
+            regex_original_title = title
             break
-    print(f'所有名称是：{str(separated_titles)}')
-    other_titles = [title for title in separated_titles if title not in [english_title, original_title]]
-    print(f'其他名称是：{str(other_titles)}')
 
-    # 类别
-    categories = categories_match.group(1).strip() if categories_match else ''
+    regex_other_titles = [title for title in separated_titles if title not in [regex_english_title, regex_original_title]]
+
+    # 类别（正则）
+    regex_categories = categories_match.group(1).strip() if categories_match else ''
 
     # 匹配"◎主　　演"或"◎演　　员"及其后的多行内容
     actor_pattern = re.compile(
@@ -94,7 +183,7 @@ def get_pt_gen_info(description):
         )
         actor_match = actor_pattern_alt.search(description)
 
-    actors = []
+    regex_actors = []
     if actor_match:
         # 获取演员信息部分并按行分割
         actors_info = actor_match.group(2).strip().split('\n')
@@ -109,48 +198,59 @@ def get_pt_gen_info(description):
             # 提取并清洗演员名称，只保留中文部分
             cleaned_actor = re.search(r'([\u4e00-\u9fa5·]+)', cleaned_line)
             if cleaned_actor and cleaned_actor.group() != '简':  # 避免演员数量不足导致错误
-                actors.append(cleaned_actor.group())
+                regex_actors.append(cleaned_actor.group())
             else:
                 break
 
             # 如果已经有五个演员，则停止
-            if len(actors) == 5:
+            if len(regex_actors) == 5:
                 break
 
-    if '◎语　　言' in categories or '❁' in categories or '语' in categories[:5]:
-        categories = '暂无分类'
+    if '◎语　　言' in regex_categories or '❁' in regex_categories or (regex_categories and '语' in regex_categories[:5]):
+        regex_categories = '暂无分类'
 
-    # 提取集数
-    episodes = int(episodes_match.group(1)) if episodes_match else None
+    # 提取集数（正则）
+    regex_episodes = int(episodes_match.group(1)) if episodes_match else None
 
-    # 提取季数
-    season = None
+    # 提取季数（正则）
+    regex_season = None
     season_match = re.search(r'Season (\d+)|season (\d+)| (\d+)st|第(\d+)季|第([零一二三四五六七八九十百千万]+)季', description)
     if season_match:
         if season_match.group(1):  # 数字形式
-            season = int(season_match.group(1))
+            regex_season = int(season_match.group(1))
         elif season_match.group(2):  # 数字形式
-            season = int(season_match.group(2))
+            regex_season = int(season_match.group(2))
         elif season_match.group(3):  # 数字形式
-            season = int(season_match.group(3))
+            regex_season = int(season_match.group(3))
         elif season_match.group(4):  # 数字形式
-            season = int(season_match.group(4))
+            regex_season = int(season_match.group(4))
         elif season_match.group(5):  # 汉字形式
             try:
-                season = chinese_to_int(season_match.group(5))
+                regex_season = chinese_to_int(season_match.group(5))
             except ValueError as e:
                 print(e)
-                season = None
-    else:
-        season = None
+                regex_season = None
 
-    year_result = year_match.group(1) if year_match else ''
+    regex_year = year_match.group(1) if year_match else ''
+
+    # ========== 合并结果：raw_data 优先，逐字段回退 ==========
+    original_title = raw_original_title if raw_original_title else regex_original_title
+    english_title = raw_english_title if raw_english_title else regex_english_title
+    year_result = raw_year if raw_year else regex_year
+    other_titles = raw_other_titles if raw_other_titles else regex_other_titles
+    categories = raw_categories if raw_categories else regex_categories
+    actors = raw_actors if raw_actors else regex_actors
+    episodes = raw_episodes if raw_episodes is not None else regex_episodes
+    season = raw_season if raw_season is not None else regex_season
+
     print('原始名称：', original_title)
     print('英文名称：', english_title)
     print('年份：', year_result)
     print('其他名称：', other_titles)
     print('类别：', categories)
     print('演员：', str(actors))
+    if raw_data:
+        print('（数据来源：raw_data 优先，正则回退）')
     return original_title, english_title, year_result, other_titles, categories, actors, episodes, season
 
 

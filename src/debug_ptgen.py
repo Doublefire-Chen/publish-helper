@@ -104,6 +104,39 @@ def main():
                     val_str = val_str[:200] + "..."
                 print(f"  {field:20s}: {val_str}")
 
+        # ── Section 5: get_pt_gen_info comparison ──
+        separator("5. GET_PT_GEN_INFO RESULTS (with raw_data)")
+        from src.core.rename import get_pt_gen_info  # noqa: E402
+        original_title, english_title, year, other_titles, categories, actors, episodes, season = \
+            get_pt_gen_info(format_data, raw_data=raw_data)
+        info_results = {
+            "Original Title (中文)": original_title,
+            "English Title (外文)": english_title,
+            "Year": year,
+            "Other Titles": ' / '.join(other_titles) if isinstance(other_titles, list) else other_titles,
+            "Categories": categories,
+            "Actors": ' / '.join(actors) if isinstance(actors, list) else actors,
+            "Episodes": episodes,
+            "Season": season,
+        }
+        for k, v in info_results.items():
+            print(f"  {k:25s}: {v or '(empty)'}")
+
+        separator()
+        print("\nCompare with regex-only (no raw_data):")
+        orig2, eng2, year2, other2, cat2, act2, ep2, s2 = get_pt_gen_info(format_data)
+        if orig2 != original_title:
+            print(f"  Original Title DIFFERS: regex='{orig2}' vs raw='{original_title}'")
+        if eng2 != english_title:
+            print(f"  English Title DIFFERS:  regex='{eng2}' vs raw='{english_title}'")
+        if year2 != year:
+            print(f"  Year DIFFERS:           regex='{year2}' vs raw='{year}'")
+        if cat2 != categories:
+            print(f"  Categories DIFFERS:     regex='{cat2}' vs raw='{categories}'")
+        if act2 != actors:
+            print(f"  Actors DIFFERS:         regex='{act2}' vs raw='{actors}'")
+        print("  (No differences shown = both methods agree)")
+
         # ── Copy description to clipboard ──
         separator()
         try:
