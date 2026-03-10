@@ -137,6 +137,59 @@ def main():
             print(f"  Actors DIFFERS:         regex='{act2}' vs raw='{actors}'")
         print("  (No differences shown = both methods agree)")
 
+        # ── Section 6: Complete file names from templates ──
+        separator("6. GENERATED TORRENT NAMES (from templates)")
+        from src.core.rename import get_name_from_template  # noqa: E402
+
+        # Prepare template arguments from parsed info
+        other_titles_str = ' / '.join(other_titles) if isinstance(other_titles, list) else (other_titles or '')
+        actors_str = ' / '.join(actors) if isinstance(actors, list) else (actors or '')
+        season_str = f'S{str(season).zfill(2)}' if season else ''
+        season_number = str(season) if season else ''
+        episodes_str = str(episodes) if episodes else ''
+
+        templates = [
+            ("main_title_movie",    "Movie Main Title"),
+            ("second_title_movie",  "Movie Second Title"),
+            ("file_name_movie",     "Movie File Name"),
+            ("main_title_tv",       "TV Main Title"),
+            ("second_title_tv",     "TV Second Title"),
+            ("file_name_tv",        "TV File Name"),
+        ]
+
+        for template_key, label in templates:
+            try:
+                template_value = get_settings(template_key)
+                if not template_value:
+                    continue
+                name = get_name_from_template(
+                    english_title=english_title or '',
+                    original_title=original_title or '',
+                    season=season_str,
+                    episode='{集数}',
+                    year=str(year) if year else '',
+                    video_format='{video_format}',
+                    source='{source}',
+                    video_codec='{video_codec}',
+                    bit_depth='{bit_depth}',
+                    hdr_format='{hdr_format}',
+                    frame_rate='{frame_rate}',
+                    audio_codec='{audio_codec}',
+                    channels='{channels}',
+                    audio_num='{audio_num}',
+                    team='{team}',
+                    other_titles=other_titles_str,
+                    season_number=season_number,
+                    total_episodes=f'全{episodes_str}集' if episodes_str else '',
+                    playlet_source='',
+                    categories=categories or '',
+                    actors=actors_str,
+                    template=template_key,
+                )
+                print(f"  {label:25s}: {name}")
+            except Exception as e:
+                print(f"  {label:25s}: (error: {e})")
+
         # ── Copy description to clipboard ──
         separator()
         try:
