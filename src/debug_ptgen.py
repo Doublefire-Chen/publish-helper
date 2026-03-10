@@ -138,8 +138,8 @@ def main():
             print(f"  Actors DIFFERS:         regex='{act2}' vs raw='{actors}'")
         print("  (No differences shown = both methods agree)")
 
-        # ── Section 6: Complete file names from templates ──
-        separator("6. GENERATED TORRENT NAMES (from templates)")
+        # ── Section 6: Torrent file name and template names ──
+        separator("6. TORRENT FILE NAME (种子名称)")
         from src.core.rename import get_name_from_template  # noqa: E402
 
         # Prepare template arguments from parsed info
@@ -149,6 +149,59 @@ def main():
         season_number = str(season) if season else ''
         episodes_str = str(episodes) if episodes else ''
 
+        def clean_name(name):
+            """Clean up separators left from empty video fields."""
+            name = re.sub(r'[.\s]+$', '', name)
+            name = re.sub(r'^[.\s]+', '', name)
+            name = re.sub(r'\.{2,}', '.', name)
+            name = re.sub(r'\s{2,}', ' ', name)
+            name = re.sub(r'\s*-$', '', name)
+            name = re.sub(r'\.\s*-\s*\.', '.', name)
+            return name
+
+        def make_name(template_key, episode_val=''):
+            template_value = get_settings(template_key)
+            if not template_value:
+                return None
+            return clean_name(get_name_from_template(
+                english_title=english_title or '',
+                original_title=original_title or '',
+                season=season_str,
+                episode=episode_val,
+                year=str(year) if year else '',
+                video_format='',
+                source='',
+                video_codec='',
+                bit_depth='',
+                hdr_format='',
+                frame_rate='',
+                audio_codec='',
+                channels='',
+                audio_num='',
+                team='',
+                other_titles=other_titles_str,
+                season_number=season_number,
+                total_episodes=f'全{episodes_str}集' if episodes_str else '',
+                playlet_source='',
+                categories=categories or '',
+                actors=actors_str,
+                template=template_key,
+            ))
+
+        # ── Torrent file name (种子名称) ──
+        movie_file_name = make_name('file_name_movie')
+        tv_file_name = make_name('file_name_tv', 'E01')
+        print()
+        if movie_file_name:
+            torrent_name_movie = movie_file_name + '.torrent'
+            print(f"  🎬 Movie torrent:  {torrent_name_movie}")
+        if tv_file_name:
+            torrent_name_tv = tv_file_name + '.torrent'
+            print(f"  📺 TV torrent:     {torrent_name_tv}")
+        print()
+
+        # ── All template names ──
+        separator("7. ALL TEMPLATE NAMES")
         templates = [
             ("main_title_movie",    "Movie Main Title"),
             ("second_title_movie",  "Movie Second Title"),
@@ -160,40 +213,9 @@ def main():
 
         for template_key, label in templates:
             try:
-                template_value = get_settings(template_key)
-                if not template_value:
+                name = make_name(template_key, 'E01')
+                if name is None:
                     continue
-                name = get_name_from_template(
-                    english_title=english_title or '',
-                    original_title=original_title or '',
-                    season=season_str,
-                    episode='E01',
-                    year=str(year) if year else '',
-                    video_format='',
-                    source='',
-                    video_codec='',
-                    bit_depth='',
-                    hdr_format='',
-                    frame_rate='',
-                    audio_codec='',
-                    channels='',
-                    audio_num='',
-                    team='',
-                    other_titles=other_titles_str,
-                    season_number=season_number,
-                    total_episodes=f'全{episodes_str}集' if episodes_str else '',
-                    playlet_source='',
-                    categories=categories or '',
-                    actors=actors_str,
-                    template=template_key,
-                )
-                # Clean up trailing/leading separators from empty video fields
-                name = re.sub(r'[\.\s]+$', '', name)       # trailing dots/spaces
-                name = re.sub(r'^[\.\s]+', '', name)       # leading dots/spaces
-                name = re.sub(r'\.{2,}', '.', name)        # consecutive dots
-                name = re.sub(r'\s{2,}', ' ', name)        # consecutive spaces
-                name = re.sub(r'\s*-$', '', name)          # trailing dash
-                name = re.sub(r'\.\s*-\s*\.', '.', name)   # dot-dash-dot
                 print(f"  {label:25s}: {name}")
             except Exception as e:
                 print(f"  {label:25s}: (error: {e})")
