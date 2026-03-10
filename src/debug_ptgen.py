@@ -8,6 +8,7 @@ Enter a Douban/IMDb URL and see:
   3. Parsed metadata (area, category, etc.)
 """
 import json
+import re
 import sys
 
 import pyperclip
@@ -166,18 +167,18 @@ def main():
                     english_title=english_title or '',
                     original_title=original_title or '',
                     season=season_str,
-                    episode='{集数}',
+                    episode='E01',
                     year=str(year) if year else '',
-                    video_format='{video_format}',
-                    source='{source}',
-                    video_codec='{video_codec}',
-                    bit_depth='{bit_depth}',
-                    hdr_format='{hdr_format}',
-                    frame_rate='{frame_rate}',
-                    audio_codec='{audio_codec}',
-                    channels='{channels}',
-                    audio_num='{audio_num}',
-                    team='{team}',
+                    video_format='',
+                    source='',
+                    video_codec='',
+                    bit_depth='',
+                    hdr_format='',
+                    frame_rate='',
+                    audio_codec='',
+                    channels='',
+                    audio_num='',
+                    team='',
                     other_titles=other_titles_str,
                     season_number=season_number,
                     total_episodes=f'全{episodes_str}集' if episodes_str else '',
@@ -186,6 +187,13 @@ def main():
                     actors=actors_str,
                     template=template_key,
                 )
+                # Clean up trailing/leading separators from empty video fields
+                name = re.sub(r'[\.\s]+$', '', name)       # trailing dots/spaces
+                name = re.sub(r'^[\.\s]+', '', name)       # leading dots/spaces
+                name = re.sub(r'\.{2,}', '.', name)        # consecutive dots
+                name = re.sub(r'\s{2,}', ' ', name)        # consecutive spaces
+                name = re.sub(r'\s*-$', '', name)          # trailing dash
+                name = re.sub(r'\.\s*-\s*\.', '.', name)   # dot-dash-dot
                 print(f"  {label:25s}: {name}")
             except Exception as e:
                 print(f"  {label:25s}: (error: {e})")
