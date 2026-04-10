@@ -805,23 +805,23 @@ def is_filename_too_long(filename):
 
 
 def delete_season_number(title, season_number):
-    lowercase_season_info_without_spaces = ' season' + season_number  # 用于后期替换多余的season名称
-    uppercase_season_info_without_spaces = ' Season' + season_number  # 用于后期替换多余的Season名称
-    lowercase_season_info_with_spaces = ' season ' + season_number  # 用于后期替换多余的season名称
-    uppercase_season_info_with_spaces = ' Season ' + season_number  # 用于后期替换多余的Season名称
-    number_season_name = ' ' + season_number  # 用于后期替换多余的数字季名称
-    roman_season_name = ' ' + int_to_roman(int(season_number))  # 用于后期替换多余的罗马季名称
-    special_roman_season_name = ' ' + int_to_special_roman(int(season_number))  # 用于后期替换多余的特殊罗马季名称
-
-    # Remove the specified strings from the title
-    title = title.replace(lowercase_season_info_without_spaces, '')
-    title = title.replace(uppercase_season_info_without_spaces, '')
-    title = title.replace(lowercase_season_info_with_spaces, '')
-    title = title.replace(uppercase_season_info_with_spaces, '')
-    title = title.replace(number_season_name, '')
-    title = title.replace(roman_season_name, '')
-    title = title.replace(special_roman_season_name, '')
-
+    # 仅移除位于标题末尾的季数后缀，避免误伤标题中间的数字
+    # （例如 "Ni Hao 1983" 在 season=1 时不应被改写为 "Ni Hao983"）
+    title = title.rstrip()
+    suffixes = [
+        ' Season ' + season_number,
+        ' season ' + season_number,
+        ' Season' + season_number,
+        ' season' + season_number,
+        ' ' + season_number,
+        ' ' + int_to_roman(int(season_number)),
+        ' ' + int_to_special_roman(int(season_number)),
+    ]
+    # 先匹配最长后缀，避免 " Season 1" 被先匹配为 " 1"
+    for suffix in sorted(suffixes, key=len, reverse=True):
+        if title.endswith(suffix):
+            title = title[: -len(suffix)]
+            break
     return title.strip()
 
 
