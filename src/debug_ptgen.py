@@ -143,27 +143,25 @@ def main():
         from src.core.rename import get_name_from_template  # noqa: E402
 
         # Prepare template arguments from parsed info
+        # NOTE: Mirror the production rename pipeline (src/api/startapi.py and
+        # src/main_cli.py): pass `season` as a zero-padded number string (no
+        # 'S' prefix — the template literal already contains 'S{season}'),
+        # and pass `episode` as a number string or '{集数}' placeholder
+        # (the template literal already contains 'E{episode}').
         other_titles_str = ' / '.join(other_titles) if isinstance(other_titles, list) else (other_titles or '')
         actors_str = ' / '.join(actors) if isinstance(actors, list) else (actors or '')
-        season_str = f'S{str(season).zfill(2)}' if season else ''
-        season_number = str(season) if season else ''
+        # Default to season 1 if PT-Gen didn't provide one (matches production
+        # CLI default and the GUI's season input default).
+        season_int = season if season else 1
+        season_str = str(season_int).zfill(2)
+        season_number = str(season_int)
         episodes_str = str(episodes) if episodes else ''
-
-        def clean_name(name):
-            """Clean up separators left from empty video fields."""
-            name = re.sub(r'[.\s]+$', '', name)
-            name = re.sub(r'^[.\s]+', '', name)
-            name = re.sub(r'\.{2,}', '.', name)
-            name = re.sub(r'\s{2,}', ' ', name)
-            name = re.sub(r'\s*-$', '', name)
-            name = re.sub(r'\.\s*-\s*\.', '.', name)
-            return name
 
         def make_name(template_key, episode_val=''):
             template_value = get_settings(template_key)
             if not template_value:
                 return None
-            return clean_name(get_name_from_template(
+            return get_name_from_template(
                 english_title=english_title or '',
                 original_title=original_title or '',
                 season=season_str,
@@ -186,11 +184,11 @@ def main():
                 categories=categories or '',
                 actors=actors_str,
                 template=template_key,
-            ))
+            )
 
         # ── Torrent file name (种子名称) ──
         movie_file_name = make_name('file_name_movie')
-        tv_file_name = make_name('file_name_tv', 'E01')
+        tv_file_name = make_name('file_name_tv', '01')
         print()
         if movie_file_name:
             torrent_name_movie = movie_file_name + '.torrent'
@@ -213,7 +211,7 @@ def main():
 
         for template_key, label in templates:
             try:
-                name = make_name(template_key, 'E01')
+                name = make_name(template_key, '01')
                 if name is None:
                     continue
                 print(f"  {label:25s}: {name}")
