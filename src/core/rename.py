@@ -531,7 +531,7 @@ def move_file_to_folder(file_path, folder_name):
     # 检查文件是否已在目标文件夹中
     if os.path.basename(file_dir) == folder_name:
         print(f'文件"{file_path}"已在"{folder_name}"中，无需移动')
-        return False, f'文件"{file_path}"已在"{folder_name}"中，无需移动'
+        return True, file_path
 
     # 目标文件夹的完整路径
     target_folder = file_dir + '/' + folder_name
