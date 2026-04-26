@@ -46,6 +46,7 @@ from src.core.tool import (
     make_torrent,
 )
 import os
+import shlex
 import sys
 import time
 
@@ -1873,6 +1874,20 @@ def main():
                     print(f"  展开路径为: {video_path}")
         except (OSError, ValueError) as e:
             pass  # Keep original path
+
+    # On POSIX systems, dragging a file into the terminal produces shell-escaped
+    # paths (e.g. "\ " for spaces, "\," for commas). prompt_toolkit reads those
+    # backslashes literally, so the string won't match the real file on disk.
+    if not path_exists and sys.platform != 'win32' and '\\' in video_path:
+        try:
+            unescaped_parts = shlex.split(video_path, posix=True)
+            if len(unescaped_parts) == 1:
+                unescaped = os.path.normpath(unescaped_parts[0])
+                if os.path.exists(unescaped):
+                    video_path = unescaped
+                    path_exists = True
+        except ValueError:
+            pass  # Unbalanced quotes etc. — keep original path
 
     if not path_exists:
         print_error(f"路径不存在: {video_path}")
